@@ -598,6 +598,10 @@
       <div class="chart-title">Steps</div>
       <div class="chart-wrap"><canvas id="ch-steps"></canvas></div>
     </div>
+    <div class="chart-card">
+      <div class="chart-title">Macronutrients (g)</div>
+      <div class="chart-wrap"><canvas id="ch-macros"></canvas></div>
+    </div>
   </div>
 </div>
 
@@ -1057,17 +1061,25 @@ async function renderTrends() {
   document.getElementById('trends-name').textContent = profiles[currentUser]?.name || '';
 
   const days = await loadDayRange(currentUser, trendRange);
-  const labels    = days.map(d => fmtShort(d.date));
-  const weights   = days.map(d => d.weight || null);
-  const calories  = days.map(d => {
+  const labels   = days.map(d => fmtShort(d.date));
+  const weights  = days.map(d => d.weight || null);
+  const calories = days.map(d => {
     const meals = d.meals || {};
     return MEALS.reduce((s, k) => s + (meals[k]?.total || 0), 0) || null;
   });
-  const steps = days.map(d => d.activity?.steps || null);
+  const steps   = days.map(d => d.activity?.steps || null);
+  const protein = days.map(d => MEALS.reduce((s,k) => s + (d.meals?.[k]?.protein||0), 0) || null);
+  const carbs   = days.map(d => MEALS.reduce((s,k) => s + (d.meals?.[k]?.carbs  ||0), 0) || null);
+  const fat     = days.map(d => MEALS.reduce((s,k) => s + (d.meals?.[k]?.fat    ||0), 0) || null);
 
   mkLine('ch-weight', labels, [ds('Weight', weights, '#C4C2BE', true)], ' kg');
   mkBar ('ch-cals',   labels, [dsBar('Calories', calories, '#B8955A')], ' kcal');
   mkBar ('ch-steps',  labels, [dsBar('Steps', steps, '#C4C2BE')], '');
+  mkStackedBar('ch-macros', labels, [
+    dsBar('Protein', protein, '#6B9FD4'),
+    dsBar('Carbs',   carbs,   '#E8A838'),
+    dsBar('Fat',     fat,     '#D46B6B'),
+  ]);
 }
 
 async function loadDayRange(uid, numDays) {
@@ -1140,6 +1152,29 @@ function mkBar(id, labels, datasets, yUnit) {
       scales: {
         x: { grid: { color: '#181818' }, ticks: { maxTicksLimit: 8 } },
         y: { grid: { color: '#181818' } }
+      }
+    }
+  });
+}
+
+function mkStackedBar(id, labels, datasets) {
+  killChart(id);
+  const el = document.getElementById(id);
+  if (!el) return;
+  charts[id] = new Chart(el, {
+    type: 'bar', data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: { color: '#888', boxWidth: 10, padding: 12, font: { size: 11 } }
+        }
+      },
+      scales: {
+        x: { stacked: true, grid: { color: '#181818' }, ticks: { maxTicksLimit: 8 } },
+        y: { stacked: true, grid: { color: '#181818' } },
       }
     }
   });
