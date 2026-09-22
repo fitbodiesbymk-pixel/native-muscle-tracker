@@ -925,10 +925,9 @@ Use standard nutritional values. Return ONLY valid JSON, no markdown:
       items: parsed.items
     };
 
-    await patchDay({ [`meals.${key}`]: mealData });
-
-    // Update in-memory state
+    // Update in-memory state first, then persist the whole meals object
     currentMeals[key] = mealData;
+    await patchDay({ meals: currentMeals });
 
     // Update UI
     document.getElementById('meal-cal-' + key).textContent = parsed.total + ' kcal';
@@ -957,8 +956,8 @@ Use standard nutritional values. Return ONLY valid JSON, no markdown:
 }
 
 async function clearMeal(key) {
-  await patchDay({ [`meals.${key}`]: firebase.firestore.FieldValue.delete() });
   delete currentMeals[key];
+  await patchDay({ meals: currentMeals });
   renderMealCards(currentMeals);
   updateCalTotal(currentMeals);
 }
