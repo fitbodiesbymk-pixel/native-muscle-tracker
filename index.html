@@ -291,7 +291,42 @@
     }
     .activity-field input:focus, .activity-field textarea:focus { border-color: var(--silver); }
     .activity-field.full { grid-column: 1 / -1; }
-    .activity-field textarea { resize: none; min-height: 70px; line-height: 1.5; }
+
+    /* Workout table */
+    .workout-label {
+      font-size: 0.8125rem; font-weight: 600; color: var(--sub);
+      margin: 0.875rem 0 0.5rem; letter-spacing: 0.01em;
+    }
+    .workout-table { width: 100%; border-collapse: collapse; }
+    .workout-table th {
+      font-family: 'Barlow Condensed', sans-serif; font-size: 0.75rem;
+      font-weight: 600; color: var(--sub); text-transform: uppercase;
+      letter-spacing: 0.05em; padding: 0 4px 6px; text-align: left;
+    }
+    .workout-table th:nth-child(1) { width: 44%; }
+    .workout-table th:nth-child(2),
+    .workout-table th:nth-child(3),
+    .workout-table th:nth-child(4) { width: 18%; }
+    .workout-table td { padding: 3px 4px; }
+    .workout-table td input {
+      width: 100%; background: var(--card); border: 1px solid var(--border);
+      border-radius: 6px; padding: 6px 7px; color: var(--text);
+      font-size: 0.875rem; font-family: 'Barlow', sans-serif; outline: none;
+      transition: border-color 0.15s;
+    }
+    .workout-table td input:focus { border-color: var(--silver); }
+    .workout-row-del {
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      font-size: 1rem; padding: 0 2px; line-height: 1;
+    }
+    .workout-row-del:hover { color: #c0392b; }
+    .btn-add-row {
+      margin-top: 0.5rem; background: none; border: 1px dashed var(--border);
+      color: var(--sub); border-radius: 7px; padding: 5px 12px;
+      font-size: 0.8125rem; font-family: 'Barlow', sans-serif; cursor: pointer;
+      width: 100%; transition: border-color 0.15s;
+    }
+    .btn-add-row:hover { border-color: var(--silver); color: var(--text); }
 
     /* ── TRENDS VIEW ── */
     .trends-header { padding: 1.25rem 0 0.75rem; }
@@ -474,8 +509,20 @@
           <input type="text" id="act-cardio" placeholder="e.g. 30min run" oninput="saveActivity()">
         </div>
         <div class="activity-field full">
-          <label>Training session</label>
-          <textarea id="act-training" placeholder="e.g. Bench 3×8 100kg, Rows 3×10 80kg…" oninput="saveActivity()"></textarea>
+          <div class="workout-label">Training session</div>
+          <table class="workout-table" id="workout-table">
+            <thead>
+              <tr>
+                <th>Exercise</th>
+                <th>Sets</th>
+                <th>Weight</th>
+                <th>Reps</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="workout-body"></tbody>
+          </table>
+          <button class="btn-add-row" onclick="addWorkoutRow()">+ Add exercise</button>
         </div>
       </div>
     </div>
@@ -681,7 +728,8 @@ async function loadToday() {
   document.getElementById('w-saved').style.display = 'none';
   document.getElementById('act-steps').value    = '';
   document.getElementById('act-cardio').value   = '';
-  document.getElementById('act-training').value = '';
+  document.getElementById('workout-body').innerHTML = '';
+  addWorkoutRow();
   document.getElementById('cal-total').textContent = '0';
 
   try {
@@ -702,7 +750,14 @@ function populateDay(data) {
   if (data.activity) {
     document.getElementById('act-steps').value    = data.activity.steps    || '';
     document.getElementById('act-cardio').value   = data.activity.cardio   || '';
-    document.getElementById('act-training').value = data.activity.training || '';
+    const rows = data.activity.training || [];
+    const tbody = document.getElementById('workout-body');
+    tbody.innerHTML = '';
+    if (rows.length) {
+      rows.forEach(r => addWorkoutRow(r));
+    } else {
+      addWorkoutRow();
+    }
   }
   renderMealCards(data.meals || {});
   updateCalTotal(data.meals || {});
@@ -724,14 +779,44 @@ async function saveWeight() {
   setTimeout(() => { document.getElementById('w-saved').style.display = 'none'; }, 2000);
 }
 
+function addWorkoutRow(data = {}) {
+  const tbody = document.getElementById('workout-body');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text"   placeholder="e.g. Bench press" value="${data.exercise||''}" oninput="saveActivity()"></td>
+    <td><input type="number" placeholder="3"   value="${data.sets||''}"   oninput="saveActivity()" min="1"></td>
+    <td><input type="text"   placeholder="100kg" value="${data.weight||''}" oninput="saveActivity()"></td>
+    <td><input type="number" placeholder="8"   value="${data.reps||''}"   oninput="saveActivity()" min="1"></td>
+    <td><button class="workout-row-del" onclick="delWorkoutRow(this)" title="Remove">×</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function delWorkoutRow(btn) {
+  btn.closest('tr').remove();
+  saveActivity();
+}
+
+function getWorkoutRows() {
+  return Array.from(document.querySelectorAll('#workout-body tr')).map(tr => {
+    const inputs = tr.querySelectorAll('input');
+    return {
+      exercise: inputs[0].value.trim(),
+      sets:     inputs[1].value.trim(),
+      weight:   inputs[2].value.trim(),
+      reps:     inputs[3].value.trim(),
+    };
+  }).filter(r => r.exercise || r.sets || r.weight || r.reps);
+}
+
 function saveActivity() {
   clearTimeout(saveTimer.activity);
   saveTimer.activity = setTimeout(async () => {
     await patchDay({
       activity: {
-        steps:    parseInt(document.getElementById('act-steps').value)    || 0,
+        steps:    parseInt(document.getElementById('act-steps').value) || 0,
         cardio:   document.getElementById('act-cardio').value.trim(),
-        training: document.getElementById('act-training').value.trim(),
+        training: getWorkoutRows(),
       }
     });
   }, 800);
