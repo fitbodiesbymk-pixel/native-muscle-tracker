@@ -613,8 +613,8 @@ const firebaseConfig = {
 // Your existing Cloudflare Worker (from Skool Builder)
 const WORKER_URL = 'https://skool-builder.fitbodiesbymk.workers.dev';
 
-const MEALS = ['breakfast','lunch','dinner','snacks'];
-const MEAL_LABELS = { breakfast:'Breakfast', lunch:'Lunch', dinner:'Dinner', snacks:'Snacks' };
+const MEALS = ['meal1','meal2','meal3','meal4','snack'];
+const MEAL_LABELS = { meal1:'Meal 1', meal2:'Meal 2', meal3:'Meal 3', meal4:'Meal 4', snack:'Snack' };
 
 // ── Firebase init ──────────────────────────────
 let db, fbReady = false;
@@ -939,10 +939,8 @@ Use standard nutritional values. Return ONLY valid JSON, no markdown:
       actions.appendChild(clr);
     }
 
-    // Refresh total
-    const snap = await db.collection('logs').doc(currentUser)
-      .collection('days').doc(currentDate).get();
-    updateCalTotal(snap.data()?.meals || {});
+    // Refresh total instantly from DOM — no extra Firestore read
+    updateCalTotalFromDOM();
 
   } catch(e) {
     console.error(e);
@@ -958,13 +956,22 @@ async function clearMeal(key) {
     .collection('days').doc(currentDate).get();
   const meals = snap.data()?.meals || {};
   renderMealCards(meals);
-  updateCalTotal(meals);
+  updateCalTotalFromDOM();
 }
 
 function updateCalTotal(meals) {
   const total = MEALS.reduce((sum, k) => sum + (meals[k]?.total || 0), 0);
   document.getElementById('cal-total').textContent = total.toLocaleString();
   return total;
+}
+
+function updateCalTotalFromDOM() {
+  const total = MEALS.reduce((sum, k) => {
+    const el = document.getElementById('meal-cal-' + k);
+    const txt = el ? el.textContent : '';
+    return sum + (parseInt(txt) || 0);
+  }, 0);
+  document.getElementById('cal-total').textContent = total.toLocaleString();
 }
 
 // ── Trends ─────────────────────────────────────
@@ -1095,7 +1102,7 @@ async function renderAcct() {
     const w = [...days].reverse().find(d => d.weight);
     return w?.weight || null;
   }
-  function loggedDays(days) { return days.filter(d => d.weight || d.meals?.breakfast).length; }
+  function loggedDays(days) { return days.filter(d => d.weight || d.meals?.meal1).length; }
 
   function userCard(uid, days, cls, color) {
     const name = profiles[uid]?.name || uid;
