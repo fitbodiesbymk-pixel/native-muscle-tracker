@@ -872,9 +872,17 @@ function saveActivity() {
 }
 
 async function patchDay(patch) {
-  await db.collection('logs').doc(currentUser)
-    .collection('days').doc(currentDate)
-    .set(patch, { merge: true });
+  const ref = db.collection('logs').doc(currentUser)
+    .collection('days').doc(currentDate);
+  try {
+    await ref.update(patch);
+  } catch(e) {
+    if (e.code === 'not-found') {
+      await ref.set(patch);
+    } else {
+      throw e;
+    }
+  }
 }
 
 // ── Meals ──────────────────────────────────────
@@ -988,9 +996,8 @@ Use standard nutritional values. Return ONLY valid JSON, no markdown:
       items:   parsed.items   || [],
     };
 
-    // Update in-memory state first, then persist the whole meals object
     currentMeals[key] = mealData;
-    await patchDay({ meals: currentMeals });
+    await patchDay({ [`meals.${key}`]: mealData });
 
     // Update UI
     document.getElementById('meal-cal-' + key).textContent = parsed.total + ' kcal';
@@ -1020,7 +1027,7 @@ Use standard nutritional values. Return ONLY valid JSON, no markdown:
 
 async function clearMeal(key) {
   delete currentMeals[key];
-  await patchDay({ meals: currentMeals });
+  await patchDay({ [`meals.${key}`]: firebase.firestore.FieldValue.delete() });
   renderMealCards(currentMeals);
   updateCalTotal(currentMeals);
 }
