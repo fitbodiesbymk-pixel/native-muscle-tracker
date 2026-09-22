@@ -269,6 +269,33 @@
       font-weight: 600; color: var(--text);
     }
     .breakdown-total .total-cals { color: var(--silver); font-weight: 700; }
+    .breakdown-macros {
+      font-size: 0.75rem; color: var(--muted);
+      padding: 0.25rem 0 0; letter-spacing: 0.01em;
+    }
+    .item-macros {
+      font-size: 0.6875rem; color: var(--muted);
+      margin-top: 1px; letter-spacing: 0.01em;
+    }
+
+    /* Macro strip under kcal total */
+    .macro-strip {
+      display: flex; justify-content: center; gap: 2rem;
+      padding: 0.25rem 0 0.25rem; margin-top: 0.25rem;
+    }
+    .macro-pill {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+    }
+    .macro-pill-val {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1.0625rem; font-weight: 700;
+      color: var(--text); letter-spacing: 0.03em;
+    }
+    .macro-pill-key {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.625rem; font-weight: 600;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em;
+    }
 
     /* AI spinner inline */
     .ai-spinner {
@@ -487,6 +514,20 @@
     <div class="cal-total">
       <div class="cal-number" id="cal-total">0</div>
       <div class="cal-label">kcal today</div>
+      <div class="macro-strip">
+        <div class="macro-pill">
+          <span class="macro-pill-val" id="m-protein">—</span>
+          <span class="macro-pill-key">Protein</span>
+        </div>
+        <div class="macro-pill">
+          <span class="macro-pill-val" id="m-carbs">—</span>
+          <span class="macro-pill-key">Carbs</span>
+        </div>
+        <div class="macro-pill">
+          <span class="macro-pill-val" id="m-fat">—</span>
+          <span class="macro-pill-key">Fat</span>
+        </div>
+      </div>
     </div>
 
     <!-- Meals -->
@@ -733,6 +774,7 @@ async function loadToday() {
   document.getElementById('workout-body').innerHTML = '';
   addWorkoutRow();
   document.getElementById('cal-total').textContent = '0';
+  ['m-protein','m-carbs','m-fat'].forEach(id => document.getElementById(id).textContent = '—');
 
   try {
     const doc = await db.collection('logs').doc(currentUser)
@@ -873,16 +915,30 @@ function renderMealCards(meals) {
 
 function renderBreakdown(meal) {
   if (!meal.items || !meal.items.length) return '';
+  const macroStr = (i) => {
+    const parts = [];
+    if (i.protein) parts.push(`P ${i.protein}g`);
+    if (i.carbs)   parts.push(`C ${i.carbs}g`);
+    if (i.fat)     parts.push(`F ${i.fat}g`);
+    return parts.join(' · ');
+  };
   return `<div class="meal-breakdown">
     ${meal.items.map(i => `
-      <div class="breakdown-item">
-        <span>${i.name}</span>
-        <span class="item-cals">${i.calories} kcal</span>
+      <div class="breakdown-item" style="flex-direction:column; align-items:flex-start; gap:1px;">
+        <div style="display:flex;justify-content:space-between;width:100%;">
+          <span>${i.name}</span>
+          <span class="item-cals">${i.calories} kcal</span>
+        </div>
+        ${macroStr(i) ? `<div class="item-macros">${macroStr(i)}</div>` : ''}
       </div>`).join('')}
     <div class="breakdown-total">
       <span>Total</span>
       <span class="total-cals">${meal.total} kcal</span>
     </div>
+    ${(meal.protein || meal.carbs || meal.fat) ? `
+    <div class="breakdown-macros">
+      P ${meal.protein || 0}g · C ${meal.carbs || 0}g · F ${meal.fat || 0}g
+    </div>` : ''}
   </div>`;
 }
 
@@ -904,12 +960,12 @@ async function calcMeal(key) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 512,
+        max_tokens: 800,
         messages: [{
           role: 'user',
-          content: `You are a nutrition calculator. Calculate the calories for: "${desc}".
+          content: `You are a nutrition calculator. Estimate calories and macronutrients for: "${desc}".
 Use standard nutritional values. Return ONLY valid JSON, no markdown:
-{"total": <number>, "items": [{"name": "<food>", "calories": <number>}]}`
+{"total":<kcal>,"protein":<g>,"carbs":<g>,"fat":<g>,"items":[{"name":"<food>","calories":<kcal>,"protein":<g>,"carbs":<g>,"fat":<g>}]}`
         }]
       })
     });
@@ -921,8 +977,11 @@ Use standard nutritional values. Return ONLY valid JSON, no markdown:
 
     const mealData = {
       description: desc,
-      total: parsed.total,
-      items: parsed.items
+      total:   parsed.total   || 0,
+      protein: parsed.protein || 0,
+      carbs:   parsed.carbs   || 0,
+      fat:     parsed.fat     || 0,
+      items:   parsed.items   || [],
     };
 
     // Update in-memory state first, then persist the whole meals object
@@ -965,7 +1024,18 @@ async function clearMeal(key) {
 function updateCalTotal(meals) {
   const total = MEALS.reduce((sum, k) => sum + (meals[k]?.total || 0), 0);
   document.getElementById('cal-total').textContent = total.toLocaleString();
+  updateMacroTotal(meals);
   return total;
+}
+
+function updateMacroTotal(meals) {
+  const p = MEALS.reduce((s, k) => s + (meals[k]?.protein || 0), 0);
+  const c = MEALS.reduce((s, k) => s + (meals[k]?.carbs   || 0), 0);
+  const f = MEALS.reduce((s, k) => s + (meals[k]?.fat     || 0), 0);
+  const fmt = (n) => n ? n + 'g' : '—';
+  document.getElementById('m-protein').textContent = fmt(p);
+  document.getElementById('m-carbs').textContent   = fmt(c);
+  document.getElementById('m-fat').textContent     = fmt(f);
 }
 
 
