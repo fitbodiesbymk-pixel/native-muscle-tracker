@@ -632,6 +632,7 @@ let dayData      = {};   // cache: { [uid]: { [date]: dayDoc } }
 let trendRange   = 7;
 let charts       = {};
 let saveTimer    = {};
+let currentMeals = {};
 
 // ── Boot ───────────────────────────────────────
 async function boot() {
@@ -723,6 +724,7 @@ function fmtShort(str) {
 // ── Load / save day ────────────────────────────
 async function loadToday() {
   updateDayHeader();
+  currentMeals = {};
   renderMealCards({});
   document.getElementById('w-input').value  = '';
   document.getElementById('w-saved').style.display = 'none';
@@ -759,8 +761,9 @@ function populateDay(data) {
       addWorkoutRow();
     }
   }
-  renderMealCards(data.meals || {});
-  updateCalTotal(data.meals || {});
+  currentMeals = data.meals || {};
+  renderMealCards(currentMeals);
+  updateCalTotal(currentMeals);
 }
 
 function updateDayHeader() {
@@ -924,6 +927,9 @@ Use standard nutritional values. Return ONLY valid JSON, no markdown:
 
     await patchDay({ [`meals.${key}`]: mealData });
 
+    // Update in-memory state
+    currentMeals[key] = mealData;
+
     // Update UI
     document.getElementById('meal-cal-' + key).textContent = parsed.total + ' kcal';
     document.getElementById('meal-cal-' + key).className = 'meal-cals';
@@ -939,8 +945,8 @@ Use standard nutritional values. Return ONLY valid JSON, no markdown:
       actions.appendChild(clr);
     }
 
-    // Refresh total instantly from DOM — no extra Firestore read
-    updateCalTotalFromDOM();
+    // Refresh total from in-memory meals (reliable, no DOM parsing)
+    updateCalTotal(currentMeals);
 
   } catch(e) {
     console.error(e);
@@ -952,11 +958,9 @@ Use standard nutritional values. Return ONLY valid JSON, no markdown:
 
 async function clearMeal(key) {
   await patchDay({ [`meals.${key}`]: firebase.firestore.FieldValue.delete() });
-  const snap = await db.collection('logs').doc(currentUser)
-    .collection('days').doc(currentDate).get();
-  const meals = snap.data()?.meals || {};
-  renderMealCards(meals);
-  updateCalTotalFromDOM();
+  delete currentMeals[key];
+  renderMealCards(currentMeals);
+  updateCalTotal(currentMeals);
 }
 
 function updateCalTotal(meals) {
@@ -965,14 +969,6 @@ function updateCalTotal(meals) {
   return total;
 }
 
-function updateCalTotalFromDOM() {
-  const total = MEALS.reduce((sum, k) => {
-    const el = document.getElementById('meal-cal-' + k);
-    const txt = el ? el.textContent : '';
-    return sum + (parseInt(txt) || 0);
-  }, 0);
-  document.getElementById('cal-total').textContent = total.toLocaleString();
-}
 
 // ── Trends ─────────────────────────────────────
 Chart.defaults.color       = '#666';
