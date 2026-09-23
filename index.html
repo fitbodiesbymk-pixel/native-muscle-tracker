@@ -1066,7 +1066,7 @@ function renderBreakdown(meal) {
     ${meal.items.map(i => `
       <div class="breakdown-item" style="flex-direction:column; align-items:flex-start; gap:1px;">
         <div style="display:flex;justify-content:space-between;width:100%;">
-          <span>${i.name}</span>
+          <span>${i.name}${i.qty ? ` <span style="color:var(--muted);font-size:0.75rem;">(${i.qty}g)</span>` : ''}</span>
           <span class="item-cals">${i.calories} kcal</span>
         </div>
         ${macroStr(i) ? `<div class="item-macros">${macroStr(i)}</div>` : ''}
@@ -1097,6 +1097,7 @@ async function fetchNutritionDB(query) {
   if (!data.items || !data.items.length) return null;
   const items = data.items.map(i => ({
     name:     i.name,
+    qty:      Math.round(i.serving_size_g || 0),
     calories: Math.round(i.calories),
     protein:  Math.round(i.protein_g      || 0),
     carbs:    Math.round(i.carbohydrates_total_g || 0),
