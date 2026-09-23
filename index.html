@@ -1087,6 +1087,59 @@ function toggleMeal(key) {
   body.classList.toggle('hidden');
 }
 
+async function fetchNutritionDB(query) {
+  const res = await fetch(WORKER_URL + '/nutrition', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query }),
+  });
+  const data = await res.json();
+  if (!data.items || !data.items.length) return null;
+  const items = data.items.map(i => ({
+    name:     i.name,
+    calories: Math.round(i.calories),
+    protein:  Math.round(i.protein_g      || 0),
+    carbs:    Math.round(i.carbohydrates_total_g || 0),
+    fat:      Math.round(i.fat_total_g    || 0),
+  }));
+  return {
+    total:   items.reduce((s, i) => s + i.calories, 0),
+    protein: items.reduce((s, i) => s + i.protein,  0),
+    carbs:   items.reduce((s, i) => s + i.carbs,    0),
+    fat:     items.reduce((s, i) => s + i.fat,      0),
+    items,
+    source: 'db',
+  };
+}
+
+async function fetchNutritionAI(desc) {
+  const res = await fetch(WORKER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 800,
+      messages: [{
+        role: 'user',
+        content: `You are a nutrition calculator. Estimate calories and macronutrients for: "${desc}".
+Use standard nutritional values. Return ONLY valid JSON, no markdown:
+{"total":<kcal>,"protein":<g>,"carbs":<g>,"fat":<g>,"items":[{"name":"<food>","calories":<kcal>,"protein":<g>,"carbs":<g>,"fat":<g>}]}`
+      }]
+    })
+  });
+  const data = await res.json();
+  const text = data.content?.[0]?.text || '';
+  const parsed = JSON.parse(text.replace(/```json?\n?/g,'').replace(/```\n?/g,'').trim());
+  return {
+    total:   parsed.total   || 0,
+    protein: parsed.protein || 0,
+    carbs:   parsed.carbs   || 0,
+    fat:     parsed.fat     || 0,
+    items:   parsed.items   || [],
+    source: 'ai',
+  };
+}
+
 async function calcMeal(key) {
   const desc = document.getElementById('meal-text-' + key).value.trim();
   if (!desc) { alert('Describe what you ate first.'); return; }
@@ -1095,33 +1148,18 @@ async function calcMeal(key) {
   spinner.style.display = 'inline-block';
 
   try {
-    const res = await fetch(WORKER_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 800,
-        messages: [{
-          role: 'user',
-          content: `You are a nutrition calculator. Estimate calories and macronutrients for: "${desc}".
-Use standard nutritional values. Return ONLY valid JSON, no markdown:
-{"total":<kcal>,"protein":<g>,"carbs":<g>,"fat":<g>,"items":[{"name":"<food>","calories":<kcal>,"protein":<g>,"carbs":<g>,"fat":<g>}]}`
-        }]
-      })
-    });
-
-    const data = await res.json();
-    const text = data.content?.[0]?.text || '';
-    const jsonStr = text.replace(/```json?\n?/g,'').replace(/```\n?/g,'').trim();
-    const parsed = JSON.parse(jsonStr);
+    // Database first (USDA-backed, accurate) — AI fallback for anything not found
+    let nutrition = await fetchNutritionDB(desc).catch(() => null);
+    if (!nutrition) nutrition = await fetchNutritionAI(desc);
 
     const mealData = {
       description: desc,
-      total:   parsed.total   || 0,
-      protein: parsed.protein || 0,
-      carbs:   parsed.carbs   || 0,
-      fat:     parsed.fat     || 0,
-      items:   parsed.items   || [],
+      total:   nutrition.total,
+      protein: nutrition.protein,
+      carbs:   nutrition.carbs,
+      fat:     nutrition.fat,
+      items:   nutrition.items,
+      source:  nutrition.source,
     };
 
     currentMeals[key] = mealData;
