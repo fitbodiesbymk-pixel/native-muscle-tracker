@@ -221,6 +221,34 @@
       color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em;
       margin-top: 0.125rem;
     }
+    .cal-progress-wrap { margin: 0.75rem 0 0.25rem; }
+    .cal-progress-bar {
+      width: 100%; height: 6px;
+      background: var(--border); border-radius: 3px; overflow: hidden;
+    }
+    .cal-progress-fill {
+      height: 100%; border-radius: 3px; transition: width 0.35s ease;
+      background: var(--silver);
+    }
+    .cal-progress-fill.over { background: #D46B6B; }
+    .cal-progress-meta {
+      display: flex; justify-content: space-between;
+      margin-top: 5px; font-size: 0.75rem;
+      font-family: 'Barlow', sans-serif; color: var(--sub);
+    }
+    .cal-remaining.over { color: #D46B6B; }
+    .cal-target-row {
+      display: flex; align-items: center; justify-content: center;
+      gap: 6px; margin-top: 0.625rem;
+      font-size: 0.8125rem; font-family: 'Barlow', sans-serif; color: var(--muted);
+    }
+    .cal-target-input {
+      width: 72px; background: var(--card); border: 1px solid var(--border);
+      border-radius: 6px; padding: 4px 7px; color: var(--text);
+      font-size: 0.875rem; font-family: 'Barlow', sans-serif;
+      outline: none; text-align: center; transition: border-color 0.15s;
+    }
+    .cal-target-input:focus { border-color: var(--silver); }
 
     /* Meal cards */
     .meal-card {
@@ -531,6 +559,21 @@
     <div class="cal-total">
       <div class="cal-number" id="cal-total">0</div>
       <div class="cal-label">kcal today</div>
+      <div class="cal-progress-wrap" id="cal-progress-wrap" style="display:none;">
+        <div class="cal-progress-bar">
+          <div class="cal-progress-fill" id="cal-progress-fill"></div>
+        </div>
+        <div class="cal-progress-meta">
+          <span id="cal-progress-label"></span>
+          <span class="cal-remaining" id="cal-remaining"></span>
+        </div>
+      </div>
+      <div class="cal-target-row">
+        <span style="color:var(--muted);">Target</span>
+        <input type="number" class="cal-target-input" id="cal-target-input"
+          placeholder="kcal" min="0" onchange="saveCalTarget()">
+        <span style="color:var(--muted);">kcal</span>
+      </div>
       <div class="macro-strip">
         <div class="macro-pill">
           <span class="macro-pill-val" id="m-protein">—</span>
@@ -700,6 +743,7 @@ async function boot() {
     snap.forEach(d => { profiles[d.id] = d.data(); });
     if (!profiles.user1 || !profiles.user2) { showView('setup', true); return; }
     updateNav();
+    loadCalTarget();
     await loadToday();
     showView('today');
   } catch(e) {
@@ -734,6 +778,7 @@ function switchUser(uid) {
   currentUser = uid;
   localStorage.setItem('nm_user', uid);
   updateNav();
+  loadCalTarget();
   const cur = document.querySelector('.bnav-btn.active')?.id?.replace('bn-','');
   loadToday().then(() => {
     if (cur === 'trends') renderTrends();
@@ -1085,7 +1130,39 @@ function updateCalTotal(meals) {
   const total = MEALS.reduce((sum, k) => sum + (meals[k]?.total || 0), 0);
   document.getElementById('cal-total').textContent = total.toLocaleString();
   updateMacroTotal(meals);
+  updateCalProgress(total);
   return total;
+}
+
+function updateCalProgress(consumed) {
+  const target = profiles[currentUser]?.calorieTarget || 0;
+  const wrap   = document.getElementById('cal-progress-wrap');
+  const fill   = document.getElementById('cal-progress-fill');
+  const label  = document.getElementById('cal-progress-label');
+  const remain = document.getElementById('cal-remaining');
+  if (!target) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  const pct  = Math.min((consumed / target) * 100, 100);
+  const over = consumed > target;
+  fill.style.width = pct + '%';
+  fill.className   = 'cal-progress-fill' + (over ? ' over' : '');
+  label.textContent = `${consumed.toLocaleString()} / ${target.toLocaleString()} kcal`;
+  const diff = Math.abs(target - consumed);
+  remain.textContent  = over ? `${diff.toLocaleString()} over` : `${diff.toLocaleString()} remaining`;
+  remain.className    = 'cal-remaining' + (over ? ' over' : '');
+}
+
+async function saveCalTarget() {
+  const val = parseInt(document.getElementById('cal-target-input').value) || 0;
+  profiles[currentUser] = profiles[currentUser] || {};
+  profiles[currentUser].calorieTarget = val;
+  await db.collection('profiles').doc(currentUser).set({ calorieTarget: val }, { merge: true });
+  updateCalProgress(MEALS.reduce((s, k) => s + (currentMeals[k]?.total || 0), 0));
+}
+
+function loadCalTarget() {
+  const target = profiles[currentUser]?.calorieTarget || '';
+  document.getElementById('cal-target-input').value = target || '';
 }
 
 function updateMacroTotal(meals) {
