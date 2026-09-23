@@ -250,19 +250,33 @@
     }
     .cal-target-input:focus { border-color: var(--silver); }
 
-    /* Nutrition inputs */
-    .macro-inputs {
-      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;
+    /* Nutrition macro blocks */
+    .macro-block { padding-bottom: 1.125rem; margin-bottom: 1.125rem; border-bottom: 1px solid var(--border); }
+    .macro-block:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .macro-block-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; }
+    .macro-block-name {
+      font-family: 'Barlow Condensed', sans-serif; font-size: 0.875rem;
+      font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--sub);
     }
-    .macro-input-field label {
-      display: block; font-size: 0.8125rem; font-weight: 600;
-      color: var(--sub); margin-bottom: 0.375rem; letter-spacing: 0.02em;
+    .macro-block-stat { font-size: 0.875rem; color: var(--text); font-weight: 600; }
+    .macro-progress-bar { width: 100%; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; margin-bottom: 0.375rem; }
+    .macro-progress-fill { height: 100%; border-radius: 3px; transition: width 0.35s ease; background: var(--silver); }
+    .macro-progress-fill.protein { background: #6B9FD4; }
+    .macro-progress-fill.carbs   { background: #E8A838; }
+    .macro-progress-fill.fat     { background: #D46B6B; }
+    .macro-progress-fill.over    { background: #c0392b !important; }
+    .macro-block-remain { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.75rem; min-height: 1em; }
+    .macro-block-remain.over { color: #D46B6B; }
+    .macro-fields-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem; }
+    .macro-field label {
+      display: block; font-size: 0.6875rem; font-weight: 600;
+      color: var(--muted); margin-bottom: 0.275rem; letter-spacing: 0.03em; text-transform: uppercase;
     }
-    .macro-input-row { display: flex; align-items: center; gap: 6px; }
+    .macro-field-inner { display: flex; align-items: center; gap: 5px; }
     .macro-num-input {
       width: 100%; background: var(--card); border: 1px solid var(--border);
-      border-radius: 7px; padding: 8px 10px; color: var(--text);
-      font-size: 1rem; font-family: 'Barlow', sans-serif; outline: none;
+      border-radius: 7px; padding: 7px 9px; color: var(--text);
+      font-size: 0.9375rem; font-family: 'Barlow', sans-serif; outline: none;
       transition: border-color 0.15s; text-align: center;
     }
     .macro-num-input:focus { border-color: var(--silver); }
@@ -548,29 +562,85 @@
     <!-- Nutrition -->
     <div class="sec-label">Nutrition</div>
     <div class="card">
-      <div class="macro-inputs">
-        <div class="macro-input-field">
-          <label>Protein</label>
-          <div class="macro-input-row">
-            <input type="number" id="n-protein" class="macro-num-input" placeholder="0" min="0" oninput="saveMacros()">
-            <span class="macro-unit">g</span>
-          </div>
+
+      <!-- Protein -->
+      <div class="macro-block">
+        <div class="macro-block-header">
+          <span class="macro-block-name" style="color:#6B9FD4;">Protein</span>
+          <span class="macro-block-stat" id="mp-stat-protein">—</span>
         </div>
-        <div class="macro-input-field">
-          <label>Carbs</label>
-          <div class="macro-input-row">
-            <input type="number" id="n-carbs" class="macro-num-input" placeholder="0" min="0" oninput="saveMacros()">
-            <span class="macro-unit">g</span>
+        <div class="macro-progress-bar"><div class="macro-progress-fill protein" id="mp-fill-protein" style="width:0%"></div></div>
+        <div class="macro-block-remain" id="mp-remain-protein"></div>
+        <div class="macro-fields-row">
+          <div class="macro-field">
+            <label>Today</label>
+            <div class="macro-field-inner">
+              <input type="number" id="n-protein" class="macro-num-input" placeholder="0" min="0" oninput="saveMacros()">
+              <span class="macro-unit">g</span>
+            </div>
           </div>
-        </div>
-        <div class="macro-input-field">
-          <label>Fat</label>
-          <div class="macro-input-row">
-            <input type="number" id="n-fat" class="macro-num-input" placeholder="0" min="0" oninput="saveMacros()">
-            <span class="macro-unit">g</span>
+          <div class="macro-field">
+            <label>Target</label>
+            <div class="macro-field-inner">
+              <input type="number" id="mt-protein" class="macro-num-input" placeholder="0" min="0" oninput="saveMacroTarget('protein')">
+              <span class="macro-unit">g</span>
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- Carbs -->
+      <div class="macro-block">
+        <div class="macro-block-header">
+          <span class="macro-block-name" style="color:#E8A838;">Carbs</span>
+          <span class="macro-block-stat" id="mp-stat-carbs">—</span>
+        </div>
+        <div class="macro-progress-bar"><div class="macro-progress-fill carbs" id="mp-fill-carbs" style="width:0%"></div></div>
+        <div class="macro-block-remain" id="mp-remain-carbs"></div>
+        <div class="macro-fields-row">
+          <div class="macro-field">
+            <label>Today</label>
+            <div class="macro-field-inner">
+              <input type="number" id="n-carbs" class="macro-num-input" placeholder="0" min="0" oninput="saveMacros()">
+              <span class="macro-unit">g</span>
+            </div>
+          </div>
+          <div class="macro-field">
+            <label>Target</label>
+            <div class="macro-field-inner">
+              <input type="number" id="mt-carbs" class="macro-num-input" placeholder="0" min="0" oninput="saveMacroTarget('carbs')">
+              <span class="macro-unit">g</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fat -->
+      <div class="macro-block">
+        <div class="macro-block-header">
+          <span class="macro-block-name" style="color:#D46B6B;">Fat</span>
+          <span class="macro-block-stat" id="mp-stat-fat">—</span>
+        </div>
+        <div class="macro-progress-bar"><div class="macro-progress-fill fat" id="mp-fill-fat" style="width:0%"></div></div>
+        <div class="macro-block-remain" id="mp-remain-fat"></div>
+        <div class="macro-fields-row">
+          <div class="macro-field">
+            <label>Today</label>
+            <div class="macro-field-inner">
+              <input type="number" id="n-fat" class="macro-num-input" placeholder="0" min="0" oninput="saveMacros()">
+              <span class="macro-unit">g</span>
+            </div>
+          </div>
+          <div class="macro-field">
+            <label>Target</label>
+            <div class="macro-field-inner">
+              <input type="number" id="mt-fat" class="macro-num-input" placeholder="0" min="0" oninput="saveMacroTarget('fat')">
+              <span class="macro-unit">g</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
   </div>
@@ -729,6 +799,7 @@ async function boot() {
     if (!profiles.user1 || !profiles.user2) { showView('setup', true); return; }
     updateNav();
     loadCalTarget();
+    loadMacroTargets();
     await loadToday();
     showView('today');
   } catch(e) {
@@ -764,6 +835,7 @@ function switchUser(uid) {
   localStorage.setItem('nm_user', uid);
   updateNav();
   loadCalTarget();
+  loadMacroTargets();
   const cur = document.querySelector('.bnav-btn.active')?.id?.replace('bn-','');
   loadToday().then(() => {
     if (cur === 'trends') renderTrends();
@@ -989,6 +1061,27 @@ function saveMacros() {
   }, 600);
 }
 
+function saveMacroTarget(macro) {
+  clearTimeout(saveTimer['mt_' + macro]);
+  saveTimer['mt_' + macro] = setTimeout(async () => {
+    const val = parseInt(document.getElementById('mt-' + macro).value) || 0;
+    profiles[currentUser] = profiles[currentUser] || {};
+    profiles[currentUser].macroTargets = profiles[currentUser].macroTargets || {};
+    profiles[currentUser].macroTargets[macro] = val;
+    await db.collection('profiles').doc(currentUser).set(
+      { macroTargets: { [macro]: val } }, { merge: true }
+    );
+    updateCalTotal();
+  }, 600);
+}
+
+function loadMacroTargets() {
+  const targets = profiles[currentUser]?.macroTargets || {};
+  ['protein', 'carbs', 'fat'].forEach(m => {
+    document.getElementById('mt-' + m).value = targets[m] || '';
+  });
+}
+
 function updateCalTotal() {
   const protein = parseInt(document.getElementById('n-protein').value) || 0;
   const carbs   = parseInt(document.getElementById('n-carbs').value)   || 0;
@@ -1000,7 +1093,35 @@ function updateCalTotal() {
   document.getElementById('m-carbs').textContent   = fmt(carbs);
   document.getElementById('m-fat').textContent     = fmt(fat);
   updateCalProgress(total);
+  updateMacroProgress(protein, carbs, fat);
   return total;
+}
+
+function updateMacroProgress(protein, carbs, fat) {
+  const targets = profiles[currentUser]?.macroTargets || {};
+  const consumed = { protein, carbs, fat };
+  ['protein', 'carbs', 'fat'].forEach(m => {
+    const c      = consumed[m];
+    const target = targets[m] || 0;
+    const fill   = document.getElementById('mp-fill-' + m);
+    const stat   = document.getElementById('mp-stat-' + m);
+    const remain = document.getElementById('mp-remain-' + m);
+    if (!target) {
+      fill.style.width = '0%';
+      stat.textContent = c ? c + 'g' : '—';
+      remain.textContent = '';
+      remain.className = 'macro-block-remain';
+      return;
+    }
+    const pct  = Math.min((c / target) * 100, 100);
+    const over = c > target;
+    const diff = Math.abs(target - c);
+    fill.style.width = pct + '%';
+    fill.className   = 'macro-progress-fill ' + m + (over ? ' over' : '');
+    stat.textContent = c + 'g / ' + target + 'g';
+    remain.textContent = over ? diff + 'g over target' : diff + 'g remaining';
+    remain.className = 'macro-block-remain' + (over ? ' over' : '');
+  });
 }
 
 function updateCalProgress(consumed) {
