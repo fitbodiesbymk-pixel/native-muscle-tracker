@@ -758,14 +758,21 @@ function showView(name, setup = false) {
 }
 
 // ── Date navigation ────────────────────────────
+function localDateStr(d) {
+  const y  = d.getFullYear();
+  const m  = String(d.getMonth() + 1).padStart(2, '0');
+  const dy = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dy}`;
+}
+
 function todayStr() {
-  return new Date().toISOString().split('T')[0];
+  return localDateStr(new Date());
 }
 
 function shiftDay(delta) {
   const d = new Date(currentDate + 'T00:00:00');
   d.setDate(d.getDate() + delta);
-  currentDate = d.toISOString().split('T')[0];
+  currentDate = localDateStr(d);
   loadToday();
 }
 
@@ -1137,7 +1144,7 @@ async function loadDayRange(uid, numDays) {
   for (let i = numDays - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    dates.push(d.toISOString().split('T')[0]);
+    dates.push(localDateStr(d));
   }
   const snap = await db.collection('logs').doc(uid)
     .collection('days').where(firebase.firestore.FieldPath.documentId(), 'in',
