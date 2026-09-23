@@ -1167,7 +1167,7 @@ async function calcMeal(key) {
     await patchDay({ [`meals.${key}`]: mealData });
 
     // Update UI
-    document.getElementById('meal-cal-' + key).textContent = parsed.total + ' kcal';
+    document.getElementById('meal-cal-' + key).textContent = mealData.total + ' kcal';
     document.getElementById('meal-cal-' + key).className = 'meal-cals';
     document.getElementById('meal-breakdown-' + key).innerHTML = renderBreakdown(mealData);
 
