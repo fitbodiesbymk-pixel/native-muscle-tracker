@@ -421,6 +421,61 @@
     .prog-bar { height: 3px; background: var(--border); border-radius: 2px; margin-top: 0.25rem; margin-bottom: 0.625rem; }
     .prog-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
 
+    /* ── Recovery ── */
+    .recovery-card { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .recovery-field label {
+      display: block; font-size: 0.75rem; font-weight: 600;
+      color: var(--sub); margin-bottom: 0.375rem; letter-spacing: 0.03em; text-transform: uppercase;
+    }
+    .recovery-field-inner { display: flex; align-items: center; gap: 6px; }
+    .recovery-input {
+      width: 100%; background: var(--card); border: 1px solid var(--border);
+      border-radius: 7px; padding: 8px 10px; color: var(--text);
+      font-size: 1rem; font-family: 'Barlow', sans-serif; outline: none;
+      transition: border-color 0.15s; text-align: center;
+    }
+    .recovery-input:focus { border-color: var(--silver); }
+    .recovery-unit { font-size: 0.8125rem; color: var(--muted); white-space: nowrap; }
+
+    /* ── AI Coach Review ── */
+    .coach-review-btn {
+      width: 100%; padding: 0.875rem; border-radius: 8px;
+      background: linear-gradient(135deg, #C4C2BE 0%, #888 100%);
+      color: #050505; border: none; cursor: pointer;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1rem; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; transition: opacity 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    }
+    .coach-review-btn:hover { opacity: 0.85; }
+    .coach-review-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .coach-review-output {
+      margin-top: 1rem; display: none;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden;
+    }
+    .coach-review-output.show { display: block; }
+    .coach-section {
+      padding: 1rem 1.125rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .coach-section:last-child { border-bottom: none; }
+    .coach-section-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.6875rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--muted); margin-bottom: 0.375rem;
+    }
+    .coach-section-text {
+      font-size: 0.9375rem; color: var(--text); line-height: 1.65;
+    }
+    .coach-flag {
+      display: inline-block; margin-top: 0.375rem;
+      background: #3a1212; color: #D46B6B;
+      font-size: 0.75rem; font-weight: 600; padding: 2px 8px;
+      border-radius: 4px; border: 1px solid #5a1818;
+    }
+
     /* ── Streak ── */
     .streak-card {
       display: flex; align-items: center; gap: 1rem;
@@ -571,6 +626,25 @@
       <span class="weight-unit">kg</span>
       <button class="btn btn-ghost btn-sm" onclick="saveWeight()" style="margin-left:auto;">Save</button>
       <span class="weight-saved" id="w-saved" style="display:none;">✓ Saved</span>
+    </div>
+
+    <!-- Recovery -->
+    <div class="sec-label">Recovery</div>
+    <div class="card recovery-card" style="margin-bottom:1rem;">
+      <div class="recovery-field">
+        <label>Sleep</label>
+        <div class="recovery-field-inner">
+          <input type="number" id="r-sleep" class="recovery-input" placeholder="0" min="0" max="24" step="0.5" oninput="saveRecovery()">
+          <span class="recovery-unit">hrs</span>
+        </div>
+      </div>
+      <div class="recovery-field">
+        <label>Soreness</label>
+        <div class="recovery-field-inner">
+          <input type="number" id="r-soreness" class="recovery-input" placeholder="1–10" min="1" max="10" oninput="saveRecovery()">
+          <span class="recovery-unit">/ 10</span>
+        </div>
+      </div>
     </div>
 
     <!-- Calorie total -->
@@ -791,6 +865,38 @@
       <h2>Accountability</h2>
     </div>
     <div id="acct-content"></div>
+
+    <!-- AI Coach Weekly Review -->
+    <div class="sec-label" style="margin-top:1.25rem;">AI Coach</div>
+    <div class="card" style="margin-bottom:1.5rem;">
+      <button class="coach-review-btn" id="coach-review-btn" onclick="generateWeeklyReview()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Generate Weekly Review
+      </button>
+      <div class="coach-review-output" id="coach-review-output">
+        <div class="coach-section">
+          <div class="coach-section-label">Summary</div>
+          <div class="coach-section-text" id="cr-summary"></div>
+        </div>
+        <div class="coach-section">
+          <div class="coach-section-label">Training</div>
+          <div class="coach-section-text" id="cr-training"></div>
+        </div>
+        <div class="coach-section">
+          <div class="coach-section-label">Nutrition</div>
+          <div class="coach-section-text" id="cr-nutrition"></div>
+        </div>
+        <div class="coach-section">
+          <div class="coach-section-label">Recovery</div>
+          <div class="coach-section-text" id="cr-recovery"></div>
+        </div>
+        <div class="coach-section" id="cr-flags-section" style="display:none;">
+          <div class="coach-section-label">Flags</div>
+          <div class="coach-section-text" id="cr-flags"></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -840,6 +946,8 @@ const firebaseConfig = {
   messagingSenderId: '450674618811',
   appId:             '1:450674618811:web:a09f0df3c17114a4a5d49e'
 };
+
+const WORKER_URL = 'https://skool-builder.fitbodiesbymk.workers.dev';
 
 // ── Firebase init ──────────────────────────────
 let db, fbReady = false;
@@ -966,9 +1074,11 @@ async function loadToday() {
   document.getElementById('act-cardio').value   = '';
   document.getElementById('workout-groups').innerHTML = '';
   addWorkoutGroup('single');
-  document.getElementById('n-protein').value = '';
-  document.getElementById('n-carbs').value   = '';
-  document.getElementById('n-fat').value     = '';
+  document.getElementById('n-protein').value  = '';
+  document.getElementById('n-carbs').value    = '';
+  document.getElementById('n-fat').value      = '';
+  document.getElementById('r-sleep').value    = '';
+  document.getElementById('r-soreness').value = '';
   document.getElementById('cal-total').textContent = '0';
   ['m-protein','m-carbs','m-fat'].forEach(id => document.getElementById(id).textContent = '—');
 
@@ -1008,6 +1118,9 @@ function populateDay(data) {
   document.getElementById('n-protein').value = n.protein || '';
   document.getElementById('n-carbs').value   = n.carbs   || '';
   document.getElementById('n-fat').value     = n.fat     || '';
+  const r = data.recovery || {};
+  document.getElementById('r-sleep').value    = r.sleep    ?? '';
+  document.getElementById('r-soreness').value = r.soreness ?? '';
   updateCalTotal();
 }
 
@@ -1223,6 +1336,15 @@ async function saveCalTarget() {
 function loadCalTarget() {
   const target = profiles[currentUser]?.calorieTarget || '';
   document.getElementById('cal-target-input').value = target || '';
+}
+
+function saveRecovery() {
+  clearTimeout(saveTimer.recovery);
+  saveTimer.recovery = setTimeout(async () => {
+    const sleep    = parseFloat(document.getElementById('r-sleep').value)  || null;
+    const soreness = parseInt(document.getElementById('r-soreness').value) || null;
+    await patchDay({ recovery: { sleep, soreness } });
+  }, 600);
 }
 
 // ── Streak ─────────────────────────────────────
@@ -1547,6 +1669,133 @@ async function renderAcct() {
     ds(profiles.user1?.name||'User 1', allDates.map(d => m1[d]?.nutrition?.kcal || null), '#C4C2BE'),
     ds(profiles.user2?.name||'User 2', allDates.map(d => m2[d]?.nutrition?.kcal || null), '#B8955A'),
   ]);
+}
+
+// ── AI Coach ───────────────────────────────────
+const KNOWLEDGE_BASE = [
+  // Kleiner — Nutrition Periodization
+  { id:"kleiner_001", category:"nutrition", principle:"Carbohydrate and calorie intake should be periodized to match training demand — higher carbs on high-output training days, lower on rest days.", confidence:"high" },
+  { id:"kleiner_002", category:"nutrition", principle:"Athletes with high training volume frequently underestimate true caloric need. Correcting a significant chronic deficit should be done gradually and carb-led (raise carbohydrates first, in stages) rather than as a single large jump.", confidence:"moderate-high" },
+  { id:"kleiner_003", category:"nutrition", principle:"Sports nutrition protein targets for strength/physique athletes: roughly 1.6–2.2 g/kg bodyweight depending on training phase and deficit status. Well above general RDA.", confidence:"high" },
+  { id:"kleiner_004", category:"nutrition", principle:"Female athletes performing high-intensity training have carbohydrate needs comparable to male athletes at similar training loads.", confidence:"moderate" },
+  { id:"kleiner_005", category:"nutrition", principle:"Aggressive caloric deficits in well-trained athletes risk disproportionate metabolic downregulation. Moderate, sustained deficits paired with adequate carbohydrate are favored over large abrupt cuts.", confidence:"high" },
+  { id:"kleiner_006", category:"nutrition", principle:"CONTESTED: Post-workout pairing of higher-glycemic carbs with protein may support amino acid delivery via insulin. Effect on net MPS is smaller than earlier literature implied when total daily protein and carbs are adequate. Minor optimization only.", confidence:"contested" },
+  // Abel — Programming Philosophy
+  { id:"abel_001", category:"programming", principle:"Effective coaching blends multiple training modalities. Distinguish what a client needs from what they want. No single modality covers every need.", confidence:"coaching-philosophy" },
+  { id:"abel_002", category:"programming", principle:"Adjusting training day-to-day based on biofeedback ('keep the program alive') is favored over rigid percentage-based periodization for non-peaking athletes.", confidence:"coaching-philosophy" },
+  { id:"abel_003", category:"programming", principle:"Rigid protocol adherence regardless of accumulated fatigue can contribute to non-contact injury and burnout. Recovery must be a programming variable.", confidence:"coaching-philosophy" },
+  { id:"abel_004", category:"training", principle:"MET (Metabolic Enhancement Training) uses standing, multi-joint, multi-plane circuit-style movement to keep metabolic demand elevated throughout a session.", confidence:"coaching-philosophy" },
+  { id:"abel_005", category:"training", principle:"CONTESTED: Steady-state aerobic training has diminishing fat-burning returns per session as conditioning improves. Broader claims that aerobic training down-regulates metabolism go beyond current evidence. Moderate aerobic volume is compatible with body composition goals.", confidence:"contested" },
+  { id:"abel_007", category:"training", principle:"Long-term reliance on single-plane, stabilized-machine training is associated with reduced ROM and core stability. Multi-plane functional work offsets this.", confidence:"coaching-philosophy" },
+  { id:"abel_009", category:"programming", principle:"Training modalities are tools, not systems to master in isolation. Value lies in underlying knowledge to select the right tool for a given goal.", confidence:"coaching-philosophy" },
+  // Concurrent Training Research (high-confidence)
+  { id:"concurrent_001", category:"programming", principle:"Strength before endurance in the same session better preserves neuromuscular and power adaptations. Long-term hypertrophy/strength outcomes don't differ much by order, but strength-first optimizes explosive power.", confidence:"high" },
+  { id:"concurrent_002", category:"programming", principle:"Separating strength and endurance sessions by 6+ hours reduces acute interference effect on strength/power adaptations compared to same-day back-to-back sessions.", confidence:"high" },
+  { id:"concurrent_003", category:"programming", principle:"Interference effect scales with endurance volume/frequency. Low-to-moderate endurance (2–3 sessions/week) rarely blunts strength/hypertrophy. High-volume (5+ sessions, long duration) more reliably caps strength outcomes.", confidence:"high" },
+  { id:"concurrent_004", category:"programming", principle:"Running's eccentric/impact loading interferes with lower-body strength recovery more than swimming. Swimming is a lower-cost way to add aerobic frequency without competing for strength recovery resources — especially relevant for masters athletes (40+).", confidence:"moderate-high" },
+  { id:"concurrent_005", category:"nutrition", principle:"Adequate total calories and carbohydrate availability blunt the interference effect in concurrent training. Chronic underfueling amplifies interference because there isn't enough substrate to recover from both stimuli. At least as important as programming/sequencing.", confidence:"high" },
+  { id:"concurrent_006", category:"programming", principle:"For genuine all-round strength and endurance development, periodizing in emphasis blocks (4–6 week strength-priority followed by endurance-priority) tends to outperform trying to maximize all qualities every week.", confidence:"moderate" },
+];
+
+async function generateWeeklyReview() {
+  const btn    = document.getElementById('coach-review-btn');
+  const output = document.getElementById('coach-review-output');
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;margin:0;border-width:2px;"></div> Analysing…';
+  output.classList.remove('show');
+
+  try {
+    const days    = await loadDayRange(currentUser, 7);
+    const profile = profiles[currentUser] || {};
+    const name    = profile.name || 'User';
+    const targets = profile.macroTargets || {};
+
+    const weekData = days.map(d => ({
+      date:      d.date,
+      weight:    d.weight   || null,
+      nutrition: d.nutrition ? { kcal: d.nutrition.kcal, protein: d.nutrition.protein, carbs: d.nutrition.carbs, fat: d.nutrition.fat } : null,
+      training:  d.activity  ? { steps: d.activity.steps || 0, cardio: d.activity.cardio || null, groups: d.activity.training?.length || 0 } : null,
+      recovery:  d.recovery  ? { sleep: d.recovery.sleep, soreness: d.recovery.soreness } : null,
+    }));
+
+    const systemPrompt = `You are a coaching reasoning layer, not a source of raw facts.
+Base every specific claim on the provided knowledge_chunks.
+If the chunks don't cover something, say so rather than guessing.
+
+Hard rules (never override):
+- Never recommend more than 3 high-impact running sessions/week without flagging joint/connective tissue load.
+- Always check recovery trend (soreness, sleep) before recommending volume increases.
+- If soreness has been 7+ for 3+ consecutive days, recommend deload/rest — do not recommend progression.
+- Nutrition specifics should scale from the user's own logged intake trend, not generic targets.
+- Chunks with confidence "contested" must not override high-confidence evidence.
+
+Respond ONLY with valid JSON — no markdown fences, no prose outside the JSON:
+{
+  "summary": "2–3 sentence overall summary",
+  "training": "1–2 sentences on training pattern and next-step recommendation",
+  "nutrition": "1–2 sentences on nutrition pattern and next-step recommendation",
+  "recovery": "1–2 sentences on recovery signals and recommendation",
+  "flags": ["array of specific flag strings, or empty array if none"],
+  "confidence": "high|moderate|low"
+}`;
+
+    const userContent = JSON.stringify({
+      user: name,
+      macro_targets: targets,
+      calorie_target: profile.calorieTarget || null,
+      week_data: weekData,
+      knowledge_chunks: KNOWLEDGE_BASE,
+    });
+
+    const res = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 800,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userContent }],
+      }),
+    });
+
+    if (!res.ok) throw new Error(`Worker returned ${res.status}`);
+    const data = await res.json();
+    const text = data.content?.[0]?.text || '';
+
+    let parsed;
+    try { parsed = JSON.parse(text); }
+    catch {
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) parsed = JSON.parse(match[0]);
+      else throw new Error('Could not parse coach response');
+    }
+
+    document.getElementById('cr-summary').textContent   = parsed.summary   || '';
+    document.getElementById('cr-training').textContent  = parsed.training  || '';
+    document.getElementById('cr-nutrition').textContent = parsed.nutrition || '';
+    document.getElementById('cr-recovery').textContent  = parsed.recovery  || '';
+
+    const flagsSec = document.getElementById('cr-flags-section');
+    const flagsEl  = document.getElementById('cr-flags');
+    if (parsed.flags?.length) {
+      flagsSec.style.display = 'block';
+      flagsEl.innerHTML = parsed.flags.map(f => `<span class="coach-flag">${f}</span>`).join(' ');
+    } else {
+      flagsSec.style.display = 'none';
+    }
+
+    output.classList.add('show');
+  } catch (err) {
+    console.error(err);
+    document.getElementById('cr-summary').textContent = 'Could not generate review — please try again.';
+    ['cr-training','cr-nutrition','cr-recovery'].forEach(id => document.getElementById(id).textContent = '');
+    document.getElementById('cr-flags-section').style.display = 'none';
+    output.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg> Generate Weekly Review';
+  }
 }
 
 // ── Boot ───────────────────────────────────────
