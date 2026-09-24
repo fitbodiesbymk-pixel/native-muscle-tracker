@@ -1227,6 +1227,7 @@ function loadCalTarget() {
 
 // ── Streak ─────────────────────────────────────
 function hasWorkout(day) {
+  if (day?.activity?.cardio?.trim()) return true;
   if (!day?.activity?.training?.length) return false;
   return day.activity.training.some(g =>
     g.exercises?.some(e => e.exercise?.trim()) || g.exercise?.trim()
