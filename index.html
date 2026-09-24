@@ -421,6 +421,55 @@
     .prog-bar { height: 3px; background: var(--border); border-radius: 2px; margin-top: 0.25rem; margin-bottom: 0.625rem; }
     .prog-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
 
+    /* ── Streak ── */
+    .streak-card {
+      display: flex; align-items: center; gap: 1rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1rem;
+    }
+    .streak-card.milestone { border-color: var(--gold); }
+    .streak-emoji { font-size: 2.25rem; line-height: 1; }
+    .streak-info { flex: 1; }
+    .streak-count {
+      font-family: 'Bebas Neue', cursive;
+      font-size: 2.75rem; line-height: 1; letter-spacing: 0.04em; color: var(--silver);
+    }
+    .streak-card.milestone .streak-count { color: var(--gold); }
+    .streak-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* ── Celebration ── */
+    .celebrate-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.88);
+      display: none; align-items: center; justify-content: center;
+      z-index: 9999; animation: fadeIn 0.3s ease;
+    }
+    .celebrate-overlay.show { display: flex; }
+    .celebrate-card {
+      background: var(--surface); border: 2px solid var(--gold);
+      border-radius: 20px; padding: 2.5rem 2rem; text-align: center;
+      max-width: 300px; width: 88%;
+    }
+    .celebrate-emoji { font-size: 3.5rem; line-height: 1; margin-bottom: 1rem; }
+    .celebrate-title {
+      font-family: 'Bebas Neue', cursive;
+      font-size: 2.25rem; letter-spacing: 0.08em; color: var(--gold);
+      margin-bottom: 0.5rem;
+    }
+    .celebrate-sub { font-size: 0.9375rem; color: var(--sub); line-height: 1.5; }
+    .celebrate-btn {
+      margin-top: 1.75rem; padding: 11px 32px;
+      background: var(--gold); color: #050505; border: none;
+      border-radius: 8px; font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1rem; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase; cursor: pointer;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
     /* ── Spinner overlay ── */
     .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 999; }
     .overlay-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; text-align: center; min-width: 240px; }
@@ -661,6 +710,15 @@
       <button class="day-nav-btn" id="train-btn-next-day" onclick="shiftDay(1)">›</button>
     </div>
 
+    <!-- Streak -->
+    <div class="streak-card" id="streak-card">
+      <div class="streak-emoji" id="streak-emoji">🏋️</div>
+      <div class="streak-info">
+        <div class="streak-count" id="streak-count">0</div>
+        <div class="streak-label" id="streak-label">Log a workout to start your streak</div>
+      </div>
+    </div>
+
     <div class="sec-label">Activity</div>
     <div class="card">
       <div class="activity-grid">
@@ -760,6 +818,16 @@
   </button>
 </nav>
 
+<!-- Celebration overlay -->
+<div class="celebrate-overlay" id="celebrate-overlay">
+  <div class="celebrate-card">
+    <div class="celebrate-emoji" id="celebrate-emoji"></div>
+    <div class="celebrate-title" id="celebrate-title"></div>
+    <div class="celebrate-sub"   id="celebrate-sub"></div>
+    <button class="celebrate-btn" onclick="dismissCelebration()">Let's go 💪</button>
+  </div>
+</div>
+
 <script>
 // ══════════════════════════════════════════════
 //  CONFIG
@@ -857,6 +925,7 @@ function showView(name, setup = false) {
   if (bn) bn.classList.add('active');
   if (name === 'trends')     renderTrends();
   if (name === 'acct')       renderAcct();
+  if (name === 'train')      renderStreak();
 }
 
 // ── Date navigation ────────────────────────────
@@ -1031,6 +1100,7 @@ function saveActivity() {
         training: getWorkoutGroups(),
       }
     });
+    renderStreak();
   }, 800);
 }
 
@@ -1153,6 +1223,103 @@ async function saveCalTarget() {
 function loadCalTarget() {
   const target = profiles[currentUser]?.calorieTarget || '';
   document.getElementById('cal-target-input').value = target || '';
+}
+
+// ── Streak ─────────────────────────────────────
+function hasWorkout(day) {
+  if (!day?.activity?.training?.length) return false;
+  return day.activity.training.some(g =>
+    g.exercises?.some(e => e.exercise?.trim()) || g.exercise?.trim()
+  );
+}
+
+async function calculateStreak(uid) {
+  let streak = 0;
+  const today = new Date();
+  for (let offset = 0; offset < 110; offset += 30) {
+    const batch = [];
+    for (let i = offset; i < Math.min(offset + 30, 110); i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      batch.push(localDateStr(d));
+    }
+    const snap = await db.collection('logs').doc(uid)
+      .collection('days')
+      .where(firebase.firestore.FieldPath.documentId(), 'in', batch)
+      .get();
+    const map = {};
+    snap.forEach(d => { map[d.id] = d.data(); });
+    let hitGap = false;
+    for (const date of batch) {
+      if (hasWorkout(map[date])) { streak++; } else { hitGap = true; break; }
+    }
+    if (hitGap) break;
+  }
+  return streak;
+}
+
+async function renderStreak() {
+  const streak = await calculateStreak(currentUser);
+  const card   = document.getElementById('streak-card');
+  const emoji  = document.getElementById('streak-emoji');
+  const count  = document.getElementById('streak-count');
+  const label  = document.getElementById('streak-label');
+
+  count.textContent = streak;
+
+  if (streak === 0) {
+    emoji.textContent = '🏋️';
+    label.textContent = 'Log a workout to start your streak';
+    card.className = 'streak-card';
+  } else if (streak >= 100) {
+    emoji.textContent = '🏆';
+    label.textContent = 'days — LEGENDARY';
+    card.className = 'streak-card milestone';
+  } else if (streak >= 50) {
+    emoji.textContent = '⚡';
+    label.textContent = 'days — ON FIRE';
+    card.className = 'streak-card milestone';
+  } else if (streak >= 10) {
+    emoji.textContent = '🔥';
+    label.textContent = 'days — KEEP GOING';
+    card.className = 'streak-card milestone';
+  } else {
+    emoji.textContent = '🔥';
+    label.textContent = streak === 1 ? 'day streak — good start' : 'day streak';
+    card.className = 'streak-card';
+  }
+
+  checkMilestoneCelebration(streak);
+}
+
+function checkMilestoneCelebration(streak) {
+  const key = 'nm_streak_celebrated_' + currentUser;
+  const celebrated = parseInt(localStorage.getItem(key)) || 0;
+  const milestones = [100, 50, 10];
+  for (const m of milestones) {
+    if (streak >= m && celebrated < m) {
+      localStorage.setItem(key, m);
+      showCelebration(m);
+      break;
+    }
+  }
+}
+
+function showCelebration(milestone) {
+  const configs = {
+    10:  { emoji: '🔥🔥🔥', title: '10 DAY STREAK!', sub: 'You\'re building a habit. Consistency is everything.' },
+    50:  { emoji: '⚡⚡⚡', title: '50 DAY STREAK!', sub: 'Seven weeks of consistent training. This is who you are now.' },
+    100: { emoji: '🏆💪💯', title: '100 DAY STREAK!', sub: 'One hundred days. You didn\'t just build a habit — you built a new standard.' },
+  };
+  const c = configs[milestone];
+  document.getElementById('celebrate-emoji').textContent = c.emoji;
+  document.getElementById('celebrate-title').textContent = c.title;
+  document.getElementById('celebrate-sub').textContent   = c.sub;
+  document.getElementById('celebrate-overlay').classList.add('show');
+}
+
+function dismissCelebration() {
+  document.getElementById('celebrate-overlay').classList.remove('show');
 }
 
 // ── Trends ─────────────────────────────────────
