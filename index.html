@@ -992,8 +992,9 @@ let dayData          = {};
 let trendRange       = 7;
 let charts           = {};
 let saveTimer        = {};
-let exerciseHistory  = {};  // { uid: { exerciseName: [{date,sets,weight,reps,weightNum}] } }
-let prCelebrated     = new Set();
+let exerciseHistory        = {};  // { uid: { exerciseName: [{date,sets,weight,reps,weightNum}] } }
+let exerciseHistoryPromise = {};  // { uid: Promise } — tracks in-flight loads
+let prCelebrated           = new Set();
 
 // ── Boot ───────────────────────────────────────
 async function boot() {
@@ -1007,6 +1008,7 @@ async function boot() {
     loadMacroTargets();
     await loadToday();
     showView('today');
+    loadExerciseHistory(currentUser); // pre-warm in background
   } catch(e) {
     console.error(e);
     document.getElementById('fb-warn').style.display = 'block';
@@ -1039,7 +1041,8 @@ function switchUser(uid) {
   currentUser = uid;
   localStorage.setItem('nm_user', uid);
   prCelebrated.clear();
-  exerciseHistory[uid] = null;
+  exerciseHistory[uid]        = null;
+  exerciseHistoryPromise[uid] = null;
   updateNav();
   loadCalTarget();
   loadMacroTargets();
@@ -1064,7 +1067,7 @@ function showView(name, setup = false) {
   if (bn) bn.classList.add('active');
   if (name === 'trends') renderTrends();
   if (name === 'acct')   renderAcct();
-  if (name === 'train')  { renderStreak(); loadExerciseHistory(currentUser); }
+  if (name === 'train')  { renderStreak(); loadExerciseHistory(currentUser).then(refreshExerciseHints); }
 }
 
 // ── Date navigation ────────────────────────────
@@ -1721,41 +1724,44 @@ async function renderAcct() {
 }
 
 // ── Progressive Overload ───────────────────────
-async function loadExerciseHistory(uid) {
-  if (exerciseHistory[uid]) return;
-  exerciseHistory[uid] = {};
-  try {
-    const days = await loadDayRange(uid, 30);
-    for (const day of days) {
-      if (!day.activity?.training?.length) continue;
-      for (const group of day.activity.training) {
-        for (const ex of (group.exercises || [])) {
-          if (!ex.exercise?.trim()) continue;
-          const key = ex.exercise.trim().toLowerCase();
-          if (!exerciseHistory[uid][key]) exerciseHistory[uid][key] = [];
-          exerciseHistory[uid][key].push({
-            date: day.date,
-            sets: ex.sets,
-            weight: ex.weight,
-            reps: ex.reps,
-            weightNum: parseFloat((ex.weight || '').replace(/[^0-9.]/g, '')) || 0,
-          });
+function loadExerciseHistory(uid) {
+  if (exerciseHistoryPromise[uid]) return exerciseHistoryPromise[uid];
+  exerciseHistoryPromise[uid] = (async () => {
+    try {
+      exerciseHistory[uid] = {};
+      const days = await loadDayRange(uid, 30);
+      for (const day of days) {
+        if (!day.activity?.training?.length) continue;
+        for (const group of day.activity.training) {
+          for (const ex of (group.exercises || [])) {
+            if (!ex.exercise?.trim()) continue;
+            const key = ex.exercise.trim().toLowerCase();
+            if (!exerciseHistory[uid][key]) exerciseHistory[uid][key] = [];
+            exerciseHistory[uid][key].push({
+              date: day.date, sets: ex.sets, weight: ex.weight, reps: ex.reps,
+              weightNum: parseFloat((ex.weight || '').replace(/[^0-9.]/g, '')) || 0,
+            });
+          }
         }
       }
-    }
-    for (const key in exerciseHistory[uid]) {
-      exerciseHistory[uid][key].sort((a, b) => b.date.localeCompare(a.date));
-    }
-    // Populate any hints already on screen
-    document.querySelectorAll('#workout-groups .workout-row').forEach(row => {
-      const exInput = row.querySelector('.ex-exercise');
-      const wtInput = row.querySelector('.ex-weight');
-      const hintDiv = row.nextElementSibling;
-      if (exInput && wtInput && hintDiv?.classList.contains('workout-hint') && exInput.value.trim()) {
-        updateExerciseHint(exInput, wtInput, hintDiv);
+      for (const key in exerciseHistory[uid]) {
+        exerciseHistory[uid][key].sort((a, b) => b.date.localeCompare(a.date));
       }
-    });
-  } catch(e) { console.error('loadExerciseHistory', e); }
+    } catch(e) { console.error('loadExerciseHistory', e); }
+  })();
+  return exerciseHistoryPromise[uid];
+}
+
+function refreshExerciseHints() {
+  if (!exerciseHistory[currentUser]) return;
+  document.querySelectorAll('#workout-groups .workout-row').forEach(row => {
+    const exInput = row.querySelector('.ex-exercise');
+    const wtInput = row.querySelector('.ex-weight');
+    const hintDiv = row.nextElementSibling;
+    if (exInput && wtInput && hintDiv?.classList.contains('workout-hint') && exInput.value.trim()) {
+      updateExerciseHint(exInput, wtInput, hintDiv);
+    }
+  });
 }
 
 function updateExerciseHint(exInput, wtInput, hintDiv) {
