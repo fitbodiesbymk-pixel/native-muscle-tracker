@@ -1725,7 +1725,7 @@ async function loadExerciseHistory(uid) {
   if (exerciseHistory[uid]) return;
   exerciseHistory[uid] = {};
   try {
-    const days = await loadDayRange(uid, 60);
+    const days = await loadDayRange(uid, 30);
     for (const day of days) {
       if (!day.activity?.training?.length) continue;
       for (const group of day.activity.training) {
