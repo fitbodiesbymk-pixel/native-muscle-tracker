@@ -217,13 +217,17 @@
     }
     .recipe-detail-add:active { background: var(--bg); border-color: var(--silver); }
     .recipe-cat-header {
-      padding: 6px 14px 4px;
+      padding: 10px 14px 8px;
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em;
-      text-transform: uppercase; color: var(--muted);
-      background: var(--surface); border-bottom: 1px solid var(--border);
+      font-size: 0.9375rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--text);
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      border-left: 3px solid var(--silver);
       position: sticky; top: 0; z-index: 1;
     }
+    .recipe-cat-header:first-child { border-top: none; }
 
     /* ── Views ── */
     .view { display: none; padding-bottom: 70px; }
