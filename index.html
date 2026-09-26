@@ -2333,7 +2333,10 @@ function toggleFindFood() {
   if (!isOpen) {
     document.getElementById('find-food-search').value = '';
     renderRecipeList(RECIPES, false);
-    setTimeout(() => document.getElementById('find-food-search').focus(), 80);
+    setTimeout(() => {
+      document.getElementById('find-food-search').focus();
+      btn.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
   }
 }
 
