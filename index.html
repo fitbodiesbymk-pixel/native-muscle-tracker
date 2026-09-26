@@ -369,6 +369,25 @@
     }
     .btn-add-workout:hover { border-color: var(--silver); color: var(--text); }
 
+    /* ── Day Type Toggle ── */
+    .day-type-wrap { margin-bottom: 1rem; }
+    .day-type-toggle {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 4px; gap: 4px;
+    }
+    .dtt-btn {
+      padding: 8px 4px; border-radius: 7px; border: none;
+      background: transparent; color: var(--muted);
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.875rem; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase; cursor: pointer; transition: all 0.15s;
+    }
+    .dtt-btn:hover { color: var(--text); }
+    .dtt-btn.active-rest     { background: var(--card);   color: var(--sub);  border: 1px solid var(--border); }
+    .dtt-btn.active-standard { background: var(--card);   color: var(--silver); border: 1px solid var(--silver); }
+    .dtt-btn.active-high     { background: #1a1400; color: var(--gold);   border: 1px solid #4A3800; }
+
     /* ── Progressive Overload ── */
     .workout-hint {
       display: none; font-size: 0.75rem; color: var(--muted);
@@ -650,6 +669,15 @@
       <span class="weight-unit">kg</span>
       <button class="btn btn-ghost btn-sm" onclick="saveWeight()" style="margin-left:auto;">Save</button>
       <span class="weight-saved" id="w-saved" style="display:none;">✓ Saved</span>
+    </div>
+
+    <!-- Day Type -->
+    <div class="day-type-wrap">
+      <div class="day-type-toggle">
+        <button class="dtt-btn" id="dtt-rest"     onclick="saveDayType('rest')">Rest</button>
+        <button class="dtt-btn" id="dtt-standard" onclick="saveDayType('standard')">Standard</button>
+        <button class="dtt-btn" id="dtt-high"     onclick="saveDayType('high_output')">High Output</button>
+      </div>
     </div>
 
     <!-- Recovery -->
@@ -1114,6 +1142,7 @@ async function loadToday() {
   document.getElementById('n-fat').value      = '';
   document.getElementById('r-sleep').value    = '';
   document.getElementById('r-soreness').value = '';
+  setDayTypeUI(null);
   document.getElementById('cal-total').textContent = '0';
   ['m-protein','m-carbs','m-fat'].forEach(id => document.getElementById(id).textContent = '—');
 
@@ -1156,6 +1185,7 @@ function populateDay(data) {
   const r = data.recovery || {};
   document.getElementById('r-sleep').value    = r.sleep    ?? '';
   document.getElementById('r-soreness').value = r.soreness ?? '';
+  setDayTypeUI(data.dayType || null);
   updateCalTotal();
 }
 
@@ -1388,6 +1418,22 @@ async function saveCalTarget() {
 function loadCalTarget() {
   const target = profiles[currentUser]?.calorieTarget || '';
   document.getElementById('cal-target-input').value = target || '';
+}
+
+function setDayTypeUI(type) {
+  const map = { rest: 'dtt-rest', standard: 'dtt-standard', high_output: 'dtt-high' };
+  ['dtt-rest','dtt-standard','dtt-high'].forEach(id => {
+    document.getElementById(id).className = 'dtt-btn';
+  });
+  if (type && map[type]) {
+    const cls = type === 'rest' ? 'active-rest' : type === 'standard' ? 'active-standard' : 'active-high';
+    document.getElementById(map[type]).classList.add(cls);
+  }
+}
+
+async function saveDayType(type) {
+  setDayTypeUI(type);
+  await patchDay({ dayType: type });
 }
 
 function saveRecovery() {
@@ -1877,6 +1923,7 @@ async function generateWeeklyReview() {
 
     const weekData = days.map(d => ({
       date:      d.date,
+      dayType:   d.dayType  || null,
       weight:    d.weight   || null,
       nutrition: d.nutrition ? { kcal: d.nutrition.kcal, protein: d.nutrition.protein, carbs: d.nutrition.carbs, fat: d.nutrition.fat } : null,
       training:  d.activity  ? { steps: d.activity.steps || 0, cardio: d.activity.cardio || null, groups: d.activity.training?.length || 0 } : null,
@@ -1893,6 +1940,7 @@ Hard rules (never override):
 - If soreness has been 7+ for 3+ consecutive days, recommend deload/rest — do not recommend progression.
 - Nutrition specifics should scale from the user's own logged intake trend, not generic targets.
 - Chunks with confidence "contested" must not override high-confidence evidence.
+- dayType values: "rest" = rest day, "standard" = normal training, "high_output" = heavy or long session. Use this to assess carbohydrate matching per kleiner_001. Flag clear mismatches (high_output day with critically low carbs; rest day with excess calories if a deficit is the goal).
 
 Respond ONLY with valid JSON — no markdown fences, no prose outside the JSON:
 {
