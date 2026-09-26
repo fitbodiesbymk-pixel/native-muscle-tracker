@@ -78,18 +78,82 @@
       position: fixed; bottom: 0; left: 0; right: 0; z-index: 99;
       background: rgba(5,5,5,0.97);
       border-top: 1px solid var(--border);
-      display: flex; height: 56px;
+      display: flex; height: 60px;
     }
     .bnav-btn {
       flex: 1; display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      gap: 3px; border: none; background: transparent;
+      gap: 2px; border: none; background: transparent;
       color: var(--muted); cursor: pointer; font-family: 'Barlow', sans-serif;
-      font-size: 0.6875rem; font-weight: 500; transition: color 0.15s;
-      letter-spacing: 0.03em;
+      font-size: 0.625rem; font-weight: 600; transition: color 0.15s;
+      letter-spacing: 0.04em; text-transform: uppercase; padding: 4px 0;
     }
-    .bnav-btn.active { color: var(--silver); }
+    .bnav-btn.active { color: #fff; }
     .bnav-btn svg { width: 20px; height: 20px; }
+    .bnav-icon {
+      display: flex; align-items: center; justify-content: center;
+      width: 50px; height: 30px; border-radius: 10px;
+      transition: background 0.15s, border-color 0.15s;
+      border: 1px solid transparent;
+    }
+    .bnav-btn.active .bnav-icon {
+      background: var(--card);
+      border-color: var(--border);
+    }
+
+    /* ── Find Food ── */
+    .find-food-btn {
+      width: 100%; margin-top: 0.875rem;
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      padding: 11px; border-radius: 9px;
+      background: transparent; border: 1px dashed var(--border);
+      color: var(--muted); cursor: pointer;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.875rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; transition: border-color 0.15s, color 0.15s;
+    }
+    .find-food-btn:hover, .find-food-btn.open {
+      border-color: var(--silver); color: var(--text); border-style: solid;
+    }
+    .find-food-panel {
+      display: none; margin-top: 0.625rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden;
+    }
+    .find-food-panel.open { display: block; }
+    .find-food-search {
+      width: 100%; padding: 12px 14px;
+      background: transparent; border: none;
+      border-bottom: 1px solid var(--border);
+      color: var(--text); font-size: 0.9375rem;
+      font-family: 'Barlow', sans-serif; outline: none;
+    }
+    .find-food-search::placeholder { color: var(--muted); }
+    .recipe-list { max-height: 300px; overflow-y: auto; }
+    .recipe-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+    .recipe-row:last-child { border-bottom: none; }
+    .recipe-row:active { background: var(--card); }
+    .recipe-name { flex: 1; font-size: 0.9375rem; color: var(--text); font-weight: 500; }
+    .recipe-macros {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.75rem; color: var(--muted);
+      letter-spacing: 0.02em; white-space: nowrap;
+    }
+    .rp { color: #6B9FD4; } .rc { color: #E8A838; } .rf { color: #D46B6B; }
+    .recipe-add-btn {
+      background: var(--card); border: 1px solid var(--border);
+      color: var(--sub); border-radius: 7px; cursor: pointer;
+      font-size: 1.125rem; width: 30px; height: 30px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: all 0.15s; line-height: 1;
+    }
+    .recipe-add-btn:hover { border-color: var(--silver); color: var(--text); }
+    .recipe-add-btn.added { border-color: #3a5a3a; color: #6ab06a; background: #0f1f0f; font-size: 0.875rem; }
+    .recipe-empty { padding: 1.25rem; text-align: center; font-size: 0.875rem; color: var(--muted); }
 
     /* ── Views ── */
     .view { display: none; padding-bottom: 70px; }
@@ -897,6 +961,16 @@
 
     </div>
 
+    <!-- Find Food -->
+    <button class="find-food-btn" id="find-food-btn" onclick="toggleFindFood()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Find Food
+    </button>
+    <div class="find-food-panel" id="find-food-panel">
+      <input type="text" class="find-food-search" id="find-food-search" placeholder="Search recipes…" oninput="filterRecipes(this.value)" autocomplete="off">
+      <div id="recipe-list" class="recipe-list"></div>
+    </div>
+
   </div>
 </div>
 
@@ -1034,23 +1108,19 @@
 <!-- ── Bottom nav ── -->
 <nav class="bottom-nav" id="bottom-nav" style="display:none;">
   <button class="bnav-btn active" id="bn-today" onclick="showView('today')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
     Today
   </button>
   <button class="bnav-btn" id="bn-train" onclick="showView('train')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
-      <rect x="2.5" y="9" width="2.5" height="6" rx="1"/><rect x="5" y="10.5" width="2" height="3" rx="0.5"/>
-      <line x1="7" y1="12" x2="17" y2="12"/><rect x="17" y="10.5" width="2" height="3" rx="0.5"/>
-      <rect x="19" y="9" width="2.5" height="6" rx="1"/>
-    </svg>
+    <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="2.5" y="9" width="2.5" height="6" rx="1"/><rect x="5" y="10.5" width="2" height="3" rx="0.5"/><line x1="7" y1="12" x2="17" y2="12"/><rect x="17" y="10.5" width="2" height="3" rx="0.5"/><rect x="19" y="9" width="2.5" height="6" rx="1"/></svg></span>
     Training
   </button>
   <button class="bnav-btn" id="bn-trends" onclick="showView('trends')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
     Trends
   </button>
   <button class="bnav-btn" id="bn-acct" onclick="showView('acct')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
     Together
   </button>
 </nav>
@@ -1242,6 +1312,8 @@ async function loadToday() {
   document.getElementById('r-soreness').value = '';
   dayTypeManual = false;
   document.getElementById('day-type-override').style.display = 'none';
+  document.getElementById('find-food-panel')?.classList.remove('open');
+  document.getElementById('find-food-btn')?.classList.remove('open');
   setDayTypeUI(null);
   document.getElementById('cal-total').textContent = '0';
   ['m-protein','m-carbs','m-fat'].forEach(id => document.getElementById(id).textContent = '—');
@@ -2021,6 +2093,78 @@ function showPRToast(exercise, weight) {
   toast.textContent = `🏆 New PR — ${exercise} ${weight}`;
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 3500);
+}
+
+// ── Recipes / Find Food ────────────────────────
+const RECIPES = [
+  { name: 'Protein Oats',            protein: 35, carbs: 55, fat:  7 },
+  { name: 'Overnight Oats',          protein: 18, carbs: 58, fat:  9 },
+  { name: 'Egg White Omelette',      protein: 28, carbs:  4, fat:  3 },
+  { name: 'Greek Yogurt & Berries',  protein: 20, carbs: 28, fat:  2 },
+  { name: 'Eggs & Avocado Toast',    protein: 26, carbs: 30, fat: 22 },
+  { name: 'Chicken & Rice',          protein: 58, carbs: 58, fat:  6 },
+  { name: 'Salmon & Sweet Potato',   protein: 40, carbs: 35, fat: 18 },
+  { name: 'Beef & Broccoli',         protein: 50, carbs: 12, fat: 18 },
+  { name: 'Tuna Salad',              protein: 42, carbs:  5, fat: 10 },
+  { name: 'Turkey Wrap',             protein: 38, carbs: 42, fat:  8 },
+  { name: 'Chicken Caesar Salad',    protein: 48, carbs: 10, fat: 16 },
+  { name: 'Steak & Veg',             protein: 52, carbs: 14, fat: 20 },
+  { name: 'Lentil & Veg Bowl',       protein: 18, carbs: 55, fat:  4 },
+  { name: 'Protein Shake',           protein: 48, carbs:  8, fat:  4 },
+  { name: 'Cottage Cheese & Fruit',  protein: 26, carbs: 22, fat:  3 },
+  { name: 'Rice Cakes & Nut Butter', protein:  8, carbs: 28, fat: 12 },
+];
+
+function toggleFindFood() {
+  const panel = document.getElementById('find-food-panel');
+  const btn   = document.getElementById('find-food-btn');
+  const isOpen = panel.classList.contains('open');
+  panel.classList.toggle('open');
+  btn.classList.toggle('open');
+  if (!isOpen) {
+    document.getElementById('find-food-search').value = '';
+    renderRecipeList(RECIPES);
+    setTimeout(() => document.getElementById('find-food-search').focus(), 80);
+  }
+}
+
+function filterRecipes(query) {
+  const q = query.trim().toLowerCase();
+  renderRecipeList(q ? RECIPES.filter(r => r.name.toLowerCase().includes(q)) : RECIPES, query);
+}
+
+function renderRecipeList(recipes, query = '') {
+  const list = document.getElementById('recipe-list');
+  if (!recipes.length) {
+    list.innerHTML = `<div class="recipe-empty">No match for "${query}" — add it manually above</div>`;
+    return;
+  }
+  list.innerHTML = recipes.map(r => {
+    const kcal = r.protein * 4 + r.carbs * 4 + r.fat * 9;
+    return `
+      <div class="recipe-row">
+        <div class="recipe-name">${r.name}</div>
+        <div class="recipe-macros">
+          <span class="rp">${r.protein}P</span> &middot;
+          <span class="rc">${r.carbs}C</span> &middot;
+          <span class="rf">${r.fat}F</span>
+        </div>
+        <button class="recipe-add-btn"
+          data-p="${r.protein}" data-c="${r.carbs}" data-f="${r.fat}"
+          onclick="addRecipeToToday(this)" title="Add to today">+</button>
+      </div>`;
+  }).join('');
+}
+
+function addRecipeToToday(el) {
+  const p = parseInt(el.dataset.p), c = parseInt(el.dataset.c), f = parseInt(el.dataset.f);
+  document.getElementById('n-protein').value = (parseInt(document.getElementById('n-protein').value) || 0) + p;
+  document.getElementById('n-carbs').value   = (parseInt(document.getElementById('n-carbs').value)   || 0) + c;
+  document.getElementById('n-fat').value     = (parseInt(document.getElementById('n-fat').value)     || 0) + f;
+  saveMacros();
+  updateCalTotal();
+  el.textContent = '✓'; el.classList.add('added');
+  setTimeout(() => { el.textContent = '+'; el.classList.remove('added'); }, 1500);
 }
 
 // ── Settings / Goal ────────────────────────────
