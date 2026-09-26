@@ -137,7 +137,7 @@
     }
     .recipe-row:last-child { border-bottom: none; }
     .recipe-row:active { background: var(--card); }
-    .recipe-name { flex: 1; font-size: 0.9375rem; color: var(--text); font-weight: 500; }
+
     .recipe-macros {
       font-family: 'Barlow Condensed', sans-serif;
       font-size: 0.75rem; color: var(--muted);
@@ -154,6 +154,68 @@
     .recipe-add-btn:hover { border-color: var(--silver); color: var(--text); }
     .recipe-add-btn.added { border-color: #3a5a3a; color: #6ab06a; background: #0f1f0f; font-size: 0.875rem; }
     .recipe-empty { padding: 1.25rem; text-align: center; font-size: 0.875rem; color: var(--muted); }
+    .recipe-name { flex: 1; font-size: 0.9375rem; color: var(--text); font-weight: 500; cursor: pointer; }
+    .recipe-name:active { color: var(--silver); }
+    /* ── Recipe Detail Sheet ── */
+    .recipe-detail-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.72); z-index: 150;
+    }
+    .recipe-detail-overlay.open { display: block; }
+    .recipe-detail-sheet {
+      position: fixed; bottom: -100%; left: 0; right: 0;
+      background: var(--surface); border-radius: 20px 20px 0 0;
+      z-index: 151; transition: bottom 0.3s cubic-bezier(0.4,0,0.2,1);
+      max-height: 82vh; display: flex; flex-direction: column;
+    }
+    .recipe-detail-sheet.open { bottom: 0; }
+    .recipe-detail-handle {
+      width: 40px; height: 4px; border-radius: 2px;
+      background: var(--border); margin: 12px auto 0; flex-shrink: 0;
+    }
+    .recipe-detail-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px 12px; border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .recipe-detail-title {
+      font-family: 'Barlow Condensed', sans-serif; font-size: 1.125rem;
+      font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--text); flex: 1; padding-right: 10px;
+    }
+    .recipe-detail-close {
+      background: none; border: none; color: var(--muted);
+      font-size: 1rem; cursor: pointer; padding: 4px; line-height: 1;
+    }
+    .recipe-detail-macros {
+      display: flex; gap: 14px; padding: 10px 20px;
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.04em;
+      flex-wrap: wrap;
+    }
+    .rd-macro-p { color: #6B9FD4; } .rd-macro-c { color: #E8A838; }
+    .rd-macro-f { color: #D46B6B; } .rd-macro-k { color: var(--muted); }
+    .recipe-detail-body { overflow-y: auto; flex: 1; padding: 0 20px 4px; }
+    .rd-section-label {
+      font-family: 'Barlow Condensed', sans-serif; font-size: 0.6875rem;
+      font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted); padding-top: 14px; padding-bottom: 6px;
+    }
+    .rd-ingredients { list-style: disc; padding-left: 18px; margin: 0; }
+    .rd-ingredients li { color: var(--sub); font-size: 0.875rem; padding: 3px 0; }
+    .rd-method { list-style: decimal; padding-left: 18px; margin: 0; }
+    .rd-method li { color: var(--sub); font-size: 0.875rem; padding: 4px 0; line-height: 1.45; }
+    .recipe-detail-add {
+      margin: 12px 20px; padding: 14px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--silver);
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.9375rem; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; cursor: pointer; flex-shrink: 0;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .recipe-detail-add:active { background: var(--bg); border-color: var(--silver); }
     .recipe-cat-header {
       padding: 6px 14px 4px;
       font-family: 'Barlow Condensed', sans-serif;
@@ -1137,6 +1199,18 @@
 <div class="pr-toast" id="pr-toast"></div>
 
 <!-- Settings modal -->
+<div class="recipe-detail-overlay" id="recipe-detail-overlay" onclick="closeRecipeDetail()"></div>
+<div class="recipe-detail-sheet" id="recipe-detail-sheet">
+  <div class="recipe-detail-handle"></div>
+  <div class="recipe-detail-header">
+    <span class="recipe-detail-title" id="rd-title"></span>
+    <button class="recipe-detail-close" onclick="closeRecipeDetail()">✕</button>
+  </div>
+  <div class="recipe-detail-macros" id="rd-macros"></div>
+  <div class="recipe-detail-body" id="rd-body"></div>
+  <button class="recipe-detail-add" id="rd-add-btn" onclick="addRecipeDetailToToday()">+ Add to Today</button>
+</div>
+
 <div class="settings-modal" id="settings-modal">
   <div class="settings-backdrop" onclick="closeSettings()"></div>
   <div class="settings-sheet">
@@ -2106,56 +2180,148 @@ function showPRToast(exercise, weight) {
 // ── Recipes / Find Food ────────────────────────
 const RECIPES = [
   // Shakes
-  { cat: 'Shakes', name: 'Classic Protein Shake',         protein: 48, carbs:  8, fat:  4 },
-  { cat: 'Shakes', name: 'Banana Peanut Butter Shake',    protein: 42, carbs: 38, fat: 10 },
-  { cat: 'Shakes', name: 'Cherry Chocolate Protein Shake',protein: 40, carbs: 32, fat: 3.5 },
-  { cat: 'Shakes', name: 'Green Protein Smoothie',        protein: 35, carbs: 28, fat:  5 },
-  { cat: 'Shakes', name: 'Mango Coconut Shake',           protein: 30, carbs: 42, fat:  6 },
-  { cat: 'Shakes', name: 'Blueberry Vanilla Shake',       protein: 38, carbs: 30, fat:  4 },
-  { cat: 'Shakes', name: 'Strawberry Oat Shake',          protein: 36, carbs: 45, fat:  5 },
+  { cat:'Shakes', name:'Classic Protein Shake', protein:48, carbs:8, fat:4,
+    ingredients:['2 scoops whey protein','300ml water or milk','Ice cubes'],
+    method:['Add protein and liquid to blender.','Add ice.','Blend 30 seconds until smooth.'] },
+  { cat:'Shakes', name:'Banana Peanut Butter Shake', protein:42, carbs:38, fat:10,
+    ingredients:['1 scoop vanilla whey','1 ripe banana','1 tbsp peanut butter','250ml milk','Ice'],
+    method:['Peel and slice banana.','Add all ingredients to blender.','Blend until creamy.'] },
+  { cat:'Shakes', name:'Cherry Chocolate Protein Shake', protein:40, carbs:32, fat:3.5,
+    ingredients:['1.5 scoops chocolate whey','100g frozen cherries','250ml skimmed milk','1 tsp cocoa powder'],
+    method:['Add all ingredients to blender.','Blend until smooth. Add water if too thick.'] },
+  { cat:'Shakes', name:'Green Protein Smoothie', protein:35, carbs:28, fat:5,
+    ingredients:['1 scoop vanilla whey','1 large handful spinach','1 banana','1 tbsp flax seeds','250ml almond milk'],
+    method:['Add spinach and milk to blender first.','Add remaining ingredients.','Blend until completely smooth.'] },
+  { cat:'Shakes', name:'Mango Coconut Shake', protein:30, carbs:42, fat:6,
+    ingredients:['1 scoop vanilla whey','150g frozen mango','200ml coconut milk','100ml water','Pinch of turmeric'],
+    method:['Combine all ingredients in blender.','Blend until smooth and creamy.'] },
+  { cat:'Shakes', name:'Blueberry Vanilla Shake', protein:38, carbs:30, fat:4,
+    ingredients:['1.5 scoops vanilla whey','100g frozen blueberries','200ml milk','50g Greek yogurt','Ice'],
+    method:['Add all ingredients to blender.','Blend until smooth. Serve immediately.'] },
+  { cat:'Shakes', name:'Strawberry Oat Shake', protein:36, carbs:45, fat:5,
+    ingredients:['1 scoop strawberry whey','30g rolled oats','150g strawberries','250ml milk','Ice'],
+    method:['Blend oats first until fine.','Add remaining ingredients and blend until smooth.'] },
   // Breakfast
-  { cat: 'Breakfast', name: 'Protein Oats',               protein: 35, carbs: 55, fat:  7 },
-  { cat: 'Breakfast', name: 'Overnight Oats',             protein: 18, carbs: 58, fat:  9 },
-  { cat: 'Breakfast', name: 'Egg White Omelette',         protein: 28, carbs:  4, fat:  3 },
-  { cat: 'Breakfast', name: 'Greek Yogurt & Berries',     protein: 20, carbs: 28, fat:  2 },
-  { cat: 'Breakfast', name: 'Eggs & Avocado Toast',       protein: 26, carbs: 30, fat: 22 },
-  { cat: 'Breakfast', name: 'Scrambled Eggs & Smoked Salmon', protein: 38, carbs: 2, fat: 14 },
-  { cat: 'Breakfast', name: 'Turkish Eggs (Çılbır)',      protein: 22, carbs:  8, fat: 18 },
-  { cat: 'Breakfast', name: 'Protein Pancakes',           protein: 32, carbs: 38, fat:  6 },
+  { cat:'Breakfast', name:'Protein Oats', protein:35, carbs:55, fat:7,
+    ingredients:['80g rolled oats','1 scoop vanilla whey','300ml milk','1 tbsp almond butter','Berries to top'],
+    method:['Cook oats with milk on hob 4 mins, stirring.','Remove from heat, stir in protein powder.','Top with almond butter and berries.'] },
+  { cat:'Breakfast', name:'Overnight Oats', protein:18, carbs:58, fat:9,
+    ingredients:['70g rolled oats','200ml milk','100g Greek yogurt','1 tbsp chia seeds','Fruit & honey to top'],
+    method:['Mix oats, milk, yogurt and chia seeds in a jar.','Cover and refrigerate overnight.','Top with fruit and honey before serving.'] },
+  { cat:'Breakfast', name:'Egg White Omelette', protein:28, carbs:4, fat:3,
+    ingredients:['6 egg whites','30g low-fat feta','Handful spinach','½ red pepper, diced','Salt & pepper'],
+    method:['Whisk egg whites with seasoning.','Heat non-stick pan, spray with oil.','Pour in whites, cook 2 mins until just set.','Add fillings, fold and serve.'] },
+  { cat:'Breakfast', name:'Greek Yogurt & Berries', protein:20, carbs:28, fat:2,
+    ingredients:['250g 0% Greek yogurt','100g mixed berries','1 tbsp honey','1 tbsp granola','Pinch of cinnamon'],
+    method:['Spoon yogurt into bowl.','Top with berries, granola and honey.','Sprinkle cinnamon and serve.'] },
+  { cat:'Breakfast', name:'Eggs & Avocado Toast', protein:26, carbs:30, fat:22,
+    ingredients:['2 eggs','2 slices sourdough','½ avocado','Chilli flakes','Salt & lemon juice'],
+    method:['Toast bread. Mash avocado with lemon, salt and chilli.','Poach or fry eggs to preference.','Spread avocado on toast, top with eggs.'] },
+  { cat:'Breakfast', name:'Scrambled Eggs & Smoked Salmon', protein:38, carbs:2, fat:14,
+    ingredients:['3 whole eggs','2 egg whites','80g smoked salmon','1 tbsp cream cheese','Chives, salt & pepper'],
+    method:['Whisk eggs with cream cheese and seasoning.','Cook on low heat, folding gently until just set.','Serve topped with salmon and chives.'] },
+  { cat:'Breakfast', name:'Turkish Eggs (Çılbır)', protein:22, carbs:8, fat:18,
+    ingredients:['2 eggs','150g Greek yogurt','1 clove garlic, minced','2 tbsp butter','1 tsp Aleppo pepper (pul biber)','Dill to garnish'],
+    method:['Mix yogurt with garlic, season and warm slightly. Spread on plate.','Poach eggs in simmering water 3 mins.','Melt butter in small pan, add pul biber until sizzling.','Place eggs on yogurt, drizzle spiced butter, garnish with dill.'] },
+  { cat:'Breakfast', name:'Protein Pancakes', protein:32, carbs:38, fat:6,
+    ingredients:['1 scoop vanilla whey','50g oat flour','1 egg','100ml milk','½ tsp baking powder','Berries to serve'],
+    method:['Mix all batter ingredients until smooth.','Heat non-stick pan on medium, spray with oil.','Pour small rounds, cook 2 mins each side.','Serve with berries and a drizzle of honey.'] },
   // Sandwiches & Burgers
-  { cat: 'Sandwiches & Burgers', name: 'Chicken Caesar Wrap',       protein: 45, carbs: 38, fat: 12 },
-  { cat: 'Sandwiches & Burgers', name: 'Turkey & Avocado Sandwich', protein: 42, carbs: 35, fat: 14 },
-  { cat: 'Sandwiches & Burgers', name: 'Classic Beef Burger',       protein: 48, carbs: 40, fat: 22 },
-  { cat: 'Sandwiches & Burgers', name: 'Grilled Chicken Burger',    protein: 52, carbs: 38, fat: 10 },
-  { cat: 'Sandwiches & Burgers', name: 'Tuna Melt Sandwich',        protein: 44, carbs: 32, fat: 16 },
-  { cat: 'Sandwiches & Burgers', name: 'BLT Chicken Sandwich',      protein: 46, carbs: 36, fat: 15 },
-  { cat: 'Sandwiches & Burgers', name: 'Turkey Wrap',               protein: 38, carbs: 42, fat:  8 },
-  { cat: 'Sandwiches & Burgers', name: 'Falafel Wrap',              protein: 18, carbs: 55, fat: 12 },
-  { cat: 'Sandwiches & Burgers', name: 'Shawarma Wrap',             protein: 42, carbs: 44, fat: 16 },
-  { cat: 'Sandwiches & Burgers', name: 'Egg & Cheese Bagel',        protein: 28, carbs: 48, fat: 14 },
-  { cat: 'Sandwiches & Burgers', name: 'Smoked Salmon Bagel',       protein: 34, carbs: 45, fat: 12 },
-  { cat: 'Sandwiches & Burgers', name: 'Halloumi Burger',           protein: 30, carbs: 38, fat: 22 },
+  { cat:'Sandwiches & Burgers', name:'Chicken Caesar Wrap', protein:45, carbs:38, fat:12,
+    ingredients:['150g grilled chicken breast','1 large tortilla wrap','Romaine lettuce','2 tbsp Caesar dressing','20g parmesan','Cherry tomatoes'],
+    method:['Slice grilled chicken.','Layer lettuce, chicken, tomatoes and parmesan on wrap.','Drizzle with Caesar dressing.','Fold tightly and serve.'] },
+  { cat:'Sandwiches & Burgers', name:'Turkey & Avocado Sandwich', protein:42, carbs:35, fat:14,
+    ingredients:['120g turkey breast slices','2 slices wholegrain bread','¼ avocado','Tomato slices','Baby spinach','Dijon mustard'],
+    method:['Toast bread if preferred.','Spread mustard on one slice, mash avocado on the other.','Layer turkey, tomato and spinach.','Press together and slice.'] },
+  { cat:'Sandwiches & Burgers', name:'Classic Beef Burger', protein:48, carbs:40, fat:22,
+    ingredients:['180g 15% fat beef mince','1 brioche bun','1 slice cheddar','Lettuce, tomato, onion','Pickles','Ketchup & mustard'],
+    method:['Season mince with salt and pepper, form into patty.','Cook on high heat 3–4 mins per side.','Add cheese in last minute.','Toast bun, build burger with toppings.'] },
+  { cat:'Sandwiches & Burgers', name:'Grilled Chicken Burger', protein:52, carbs:38, fat:10,
+    ingredients:['160g chicken breast, butterflied','1 sesame bun','Lettuce & tomato','2 tbsp light mayo','1 tsp sriracha','Pickle slices'],
+    method:['Season chicken, grill 5–6 mins per side until cooked through.','Mix mayo with sriracha.','Toast bun.','Build burger with all toppings.'] },
+  { cat:'Sandwiches & Burgers', name:'Tuna Melt Sandwich', protein:44, carbs:32, fat:16,
+    ingredients:['1 tin tuna (145g, drained)','2 slices sourdough','2 tbsp light mayo','30g cheddar, grated','Red onion, diced','Tomato slices'],
+    method:['Mix tuna with mayo and red onion.','Pile onto bread, top with tomato and cheese.','Grill under broiler 3–4 mins until cheese bubbles.','Top with second slice and serve.'] },
+  { cat:'Sandwiches & Burgers', name:'BLT Chicken Sandwich', protein:46, carbs:36, fat:15,
+    ingredients:['130g grilled chicken breast','3 rashers turkey bacon','2 slices wholegrain bread','Romaine lettuce','Tomato','1 tbsp light mayo'],
+    method:['Grill turkey bacon until crispy.','Spread mayo on bread.','Layer chicken, bacon, lettuce and tomato.','Press and slice diagonally.'] },
+  { cat:'Sandwiches & Burgers', name:'Turkey Wrap', protein:38, carbs:42, fat:8,
+    ingredients:['120g turkey breast','1 large wholemeal wrap','Mixed leaves','Cucumber strips','2 tbsp hummus','Sun-dried tomatoes'],
+    method:['Spread hummus over wrap.','Layer turkey, leaves, cucumber and tomatoes.','Roll tightly, slice in half.'] },
+  { cat:'Sandwiches & Burgers', name:'Falafel Wrap', protein:18, carbs:55, fat:12,
+    ingredients:['6 falafel balls','1 large flatbread','3 tbsp hummus','Tomato & cucumber','Red cabbage slaw','Tahini drizzle'],
+    method:['Warm falafel in oven 5 mins.','Spread hummus on flatbread.','Add falafel, slaw, tomato and cucumber.','Drizzle tahini, wrap and serve.'] },
+  { cat:'Sandwiches & Burgers', name:'Shawarma Wrap', protein:42, carbs:44, fat:16,
+    ingredients:['150g chicken thigh','1 tsp each: cumin, coriander, turmeric, paprika','2 tbsp yogurt (marinade)','1 flatbread','Garlic sauce (toum)','Pickles, tomato & parsley'],
+    method:['Marinate chicken in spices and yogurt overnight.','Grill or pan-fry 4–5 mins per side.','Slice thinly.','Build on warm flatbread with garlic sauce, pickles and veg.'] },
+  { cat:'Sandwiches & Burgers', name:'Egg & Cheese Bagel', protein:28, carbs:48, fat:14,
+    ingredients:['2 eggs','1 plain bagel','1 slice cheddar','2 rashers turkey bacon','Hot sauce','Butter for toasting'],
+    method:['Fry eggs to preference.','Grill turkey bacon until crispy.','Toast bagel halves.','Build: bottom bagel, bacon, egg, cheese, hot sauce, top bagel.'] },
+  { cat:'Sandwiches & Burgers', name:'Smoked Salmon Bagel', protein:34, carbs:45, fat:12,
+    ingredients:['80g smoked salmon','1 bagel','2 tbsp cream cheese','Capers','Red onion (thin slices)','Lemon & dill'],
+    method:['Toast bagel.','Spread cream cheese on both halves.','Layer salmon, capers and red onion.','Squeeze lemon, garnish with dill.'] },
+  { cat:'Sandwiches & Burgers', name:'Halloumi Burger', protein:30, carbs:38, fat:22,
+    ingredients:['2 thick slices halloumi','1 burger bun','Roasted red pepper','Baby spinach','1 tbsp harissa','Tzatziki'],
+    method:['Grill halloumi 2 mins each side until golden.','Toast bun.','Spread tzatziki on bun, add harissa.','Build with halloumi, pepper and spinach.'] },
   // Dinner
-  { cat: 'Dinner', name: 'Chicken & Rice',                protein: 58, carbs: 58, fat:  6 },
-  { cat: 'Dinner', name: 'Salmon & Sweet Potato',         protein: 40, carbs: 35, fat: 18 },
-  { cat: 'Dinner', name: 'Beef & Broccoli',               protein: 50, carbs: 12, fat: 18 },
-  { cat: 'Dinner', name: 'Steak & Veg',                   protein: 52, carbs: 14, fat: 20 },
-  { cat: 'Dinner', name: 'Chicken Caesar Salad',          protein: 48, carbs: 10, fat: 16 },
-  { cat: 'Dinner', name: 'Tuna Salad',                    protein: 42, carbs:  5, fat: 10 },
-  { cat: 'Dinner', name: 'Lentil & Veg Bowl',             protein: 18, carbs: 55, fat:  4 },
-  { cat: 'Dinner', name: 'Grilled Sea Bass & Quinoa',     protein: 44, carbs: 38, fat: 12 },
-  { cat: 'Dinner', name: 'Lamb Kofta & Tabbouleh',        protein: 46, carbs: 28, fat: 20 },
-  { cat: 'Dinner', name: 'Prawn Stir Fry & Noodles',      protein: 38, carbs: 52, fat:  8 },
-  { cat: 'Dinner', name: 'Chicken Shawarma Bowl',         protein: 50, carbs: 45, fat: 14 },
-  { cat: 'Dinner', name: 'Baked Cod & Roasted Veg',       protein: 40, carbs: 22, fat:  8 },
-  { cat: 'Dinner', name: 'Turkey Meatballs & Pasta',      protein: 48, carbs: 62, fat: 12 },
-  { cat: 'Dinner', name: 'Chicken Tagine & Couscous',     protein: 44, carbs: 48, fat: 10 },
+  { cat:'Dinner', name:'Chicken & Rice', protein:58, carbs:58, fat:6,
+    ingredients:['200g chicken breast','80g basmati rice (dry)','2 cloves garlic','1 tsp ginger','2 tbsp soy sauce','Spring onions','1 tsp sesame oil'],
+    method:['Cook rice per packet instructions.','Season chicken with garlic, ginger and soy.','Pan-fry or grill 5–6 mins each side.','Slice and serve over rice, top with spring onions and sesame oil.'] },
+  { cat:'Dinner', name:'Salmon & Sweet Potato', protein:40, carbs:35, fat:18,
+    ingredients:['180g salmon fillet','200g sweet potato','Olive oil','Lemon','Dill','Salt & pepper'],
+    method:['Cube sweet potato, toss in oil, roast at 200°C for 20 mins.','Season salmon, pan-fry skin-side down 4 mins, flip 2 mins.','Serve salmon over sweet potato, squeeze lemon and add dill.'] },
+  { cat:'Dinner', name:'Beef & Broccoli', protein:50, carbs:12, fat:18,
+    ingredients:['200g sirloin or flank, sliced thin','200g broccoli florets','3 tbsp soy sauce','1 tbsp oyster sauce','3 cloves garlic','1 tsp ginger','1 tsp cornstarch'],
+    method:['Mix soy, oyster sauce and cornstarch into a sauce.','Blanch broccoli 2 mins, drain.','Stir-fry beef on high heat 2 mins, remove.','Fry garlic and ginger, add broccoli and sauce.','Return beef, toss and serve.'] },
+  { cat:'Dinner', name:'Steak & Veg', protein:52, carbs:14, fat:20,
+    ingredients:['200g sirloin steak','Asparagus bundle','Cherry tomatoes','1 tbsp garlic butter','Salt & pepper','Fresh thyme'],
+    method:['Season steak generously. Heat cast iron until smoking.','Cook steak 2–3 mins per side for medium-rare.','Rest 5 mins before slicing.','Grill asparagus and tomatoes with garlic butter alongside.'] },
+  { cat:'Dinner', name:'Chicken Caesar Salad', protein:48, carbs:10, fat:16,
+    ingredients:['180g chicken breast','Romaine lettuce','30g parmesan','Small portion croutons','3 tbsp Caesar dressing','Lemon & black pepper'],
+    method:['Season and grill chicken 5–6 mins per side. Rest then slice.','Toss lettuce with dressing, parmesan and croutons.','Top with sliced chicken, black pepper and a squeeze of lemon.'] },
+  { cat:'Dinner', name:'Tuna Salad', protein:42, carbs:5, fat:10,
+    ingredients:['2 tins tuna (145g each, drained)','2 stalks celery','¼ red onion','2 tbsp light mayo','1 tbsp Dijon mustard','Lemon juice, capers & parsley'],
+    method:['Dice celery and red onion finely.','Mix tuna with mayo, mustard, lemon juice and capers.','Fold in veg and parsley.','Serve on lettuce or with wholegrain crackers.'] },
+  { cat:'Dinner', name:'Lentil & Veg Bowl', protein:18, carbs:55, fat:4,
+    ingredients:['200g cooked green lentils','Courgette & pepper (roasted)','Cherry tomatoes','Spinach','1 tsp each: cumin, coriander, paprika','Lemon & olive oil dressing'],
+    method:['Roast courgette and pepper at 200°C for 15 mins.','Warm lentils with spices in a pan.','Build bowl with lentils, roasted veg, spinach and tomatoes.','Drizzle with lemon and olive oil.'] },
+  { cat:'Dinner', name:'Grilled Sea Bass & Quinoa', protein:44, carbs:38, fat:12,
+    ingredients:['180g sea bass fillet','70g quinoa (dry)','Lemon','Olive oil','Garlic','Fresh parsley','2 tbsp capers'],
+    method:['Cook quinoa per packet (15 mins).','Score sea bass skin, season well.','Pan-fry skin-side down 4 mins, flip 1 min.','Make caper & parsley salsa. Serve fish over quinoa with salsa and lemon.'] },
+  { cat:'Dinner', name:'Lamb Kofta & Tabbouleh', protein:46, carbs:28, fat:20,
+    ingredients:['200g lamb mince','1 tsp each: cumin, coriander, cinnamon','Tabbouleh: 60g bulgur wheat, large bunch parsley, tomato, lemon juice','Tzatziki to serve'],
+    method:['Mix lamb with spices, form into sausage shapes on skewers.','Grill 3–4 mins each side.','Soak bulgur 15 mins in boiling water, drain. Mix with chopped parsley, tomato and lemon juice.','Serve kofta over tabbouleh with tzatziki.'] },
+  { cat:'Dinner', name:'Prawn Stir Fry & Noodles', protein:38, carbs:52, fat:8,
+    ingredients:['200g raw prawns','150g egg noodles','Pak choi','3 tbsp soy sauce','1 tsp sesame oil','Garlic, ginger, chilli','Spring onions'],
+    method:['Cook noodles per packet, drain.','Stir-fry garlic, ginger and chilli 1 min.','Add prawns, cook 2–3 mins until pink.','Add pak choi, noodles and soy. Toss on high heat.','Finish with sesame oil and spring onions.'] },
+  { cat:'Dinner', name:'Chicken Shawarma Bowl', protein:50, carbs:45, fat:14,
+    ingredients:['200g chicken thigh','Shawarma spice mix (cumin, coriander, turmeric, paprika, garlic)','80g basmati rice','Cucumber & tomato salad','3 tbsp hummus','Pickled red cabbage','Garlic sauce'],
+    method:['Marinate chicken in shawarma spices, grill 5 mins per side.','Cook rice.','Slice chicken.','Build bowl: rice base, chicken, cucumber salad, hummus, pickled cabbage and garlic sauce.'] },
+  { cat:'Dinner', name:'Baked Cod & Roasted Veg', protein:40, carbs:22, fat:8,
+    ingredients:['200g cod fillet','Courgette, pepper, red onion','Cherry tomatoes','Olive oil','Lemon','Oregano & paprika'],
+    method:['Toss veg in olive oil and paprika, roast at 200°C for 15 mins.','Season cod with lemon, oregano and salt.','Place on baking tray, bake 12–14 mins until flaky.','Serve over roasted veg with a squeeze of lemon.'] },
+  { cat:'Dinner', name:'Turkey Meatballs & Pasta', protein:48, carbs:62, fat:12,
+    ingredients:['200g turkey mince','80g wholemeal pasta','200ml passata','Garlic & onion','Italian herbs','20g parmesan'],
+    method:['Mix turkey with garlic, herbs and seasoning. Form into balls.','Brown meatballs in pan 5 mins.','Add passata, simmer 10 mins.','Cook pasta per packet.','Serve meatballs and sauce over pasta, top with parmesan.'] },
+  { cat:'Dinner', name:'Chicken Tagine & Couscous', protein:44, carbs:48, fat:10,
+    ingredients:['200g chicken thigh','70g couscous','80g chickpeas','½ preserved lemon','2 tsp ras el hanout','Onion, tomatoes, green olives','Coriander to garnish'],
+    method:['Brown chicken in oil, remove. Fry onion 3 mins.','Add ras el hanout, tomatoes, chicken, chickpeas, olives and preserved lemon.','Simmer 25 mins.','Pour boiling water over couscous, cover and rest 5 mins, fluff with fork.','Serve tagine over couscous, garnish with coriander.'] },
   // Snacks
-  { cat: 'Snacks', name: 'Cottage Cheese & Fruit',        protein: 26, carbs: 22, fat:  3 },
-  { cat: 'Snacks', name: 'Rice Cakes & Nut Butter',       protein:  8, carbs: 28, fat: 12 },
-  { cat: 'Snacks', name: 'Greek Yogurt & Nuts',           protein: 18, carbs: 14, fat: 10 },
-  { cat: 'Snacks', name: 'Hummus & Veg Sticks',           protein:  8, carbs: 18, fat:  8 },
-  { cat: 'Snacks', name: 'Boiled Eggs',                   protein: 12, carbs:  1, fat:  8 },
+  { cat:'Snacks', name:'Cottage Cheese & Fruit', protein:26, carbs:22, fat:3,
+    ingredients:['200g low-fat cottage cheese','100g mixed fruit (berries, melon, mango)','1 tsp honey','Mint leaves'],
+    method:['Spoon cottage cheese into bowl.','Top with fruit, drizzle honey and garnish with mint.'] },
+  { cat:'Snacks', name:'Rice Cakes & Nut Butter', protein:8, carbs:28, fat:12,
+    ingredients:['4 rice cakes','2 tbsp almond or peanut butter','Banana slices (optional)','Pinch of cinnamon'],
+    method:['Spread nut butter on each rice cake.','Top with banana slices if using.','Dust with cinnamon.'] },
+  { cat:'Snacks', name:'Greek Yogurt & Nuts', protein:18, carbs:14, fat:10,
+    ingredients:['200g Greek yogurt','20g mixed nuts (almonds, walnuts)','1 tsp honey','Cinnamon'],
+    method:['Spoon yogurt into bowl.','Roughly chop nuts and sprinkle over.','Drizzle honey and dust with cinnamon.'] },
+  { cat:'Snacks', name:'Hummus & Veg Sticks', protein:8, carbs:18, fat:8,
+    ingredients:['4 tbsp hummus','Carrots, cucumber, celery (sticks)','Red pepper strips','Olive oil drizzle','Paprika'],
+    method:['Cut vegetables into sticks.','Spoon hummus into a small bowl.','Drizzle oil and dust with paprika.','Serve veg alongside for dipping.'] },
+  { cat:'Snacks', name:'Boiled Eggs', protein:12, carbs:1, fat:8,
+    ingredients:['2 large eggs','Salt & pepper','Optional: hot sauce or paprika'],
+    method:['Bring water to a boil.','Gently lower eggs in. Boil 7 mins for jammy yolks or 10 for hard.','Transfer to ice water for 2 mins, peel.','Season and serve.'] },
 ];
 
 function toggleFindFood() {
@@ -2178,8 +2344,9 @@ function filterRecipes(query) {
 
 function recipeRowHTML(r) {
   const fat = Number.isInteger(r.fat) ? r.fat : r.fat.toFixed(1);
+  const safeName = r.name.replace(/'/g, "\\'");
   return `<div class="recipe-row">
-    <div class="recipe-name">${r.name}</div>
+    <div class="recipe-name" onclick="openRecipeDetail('${safeName}')">${r.name}</div>
     <div class="recipe-macros">
       <span class="rp">${r.protein}P</span> &middot;
       <span class="rc">${r.carbs}C</span> &middot;
@@ -2217,6 +2384,50 @@ function addRecipeToToday(el) {
   updateCalTotal();
   el.textContent = '✓'; el.classList.add('added');
   setTimeout(() => { el.textContent = '+'; el.classList.remove('added'); }, 1500);
+}
+
+// ── Recipe Detail Sheet ────────────────────────
+let _activeDetailRecipe = null;
+
+function openRecipeDetail(name) {
+  const r = RECIPES.find(x => x.name === name);
+  if (!r) return;
+  _activeDetailRecipe = r;
+  const fat = Number.isInteger(r.fat) ? r.fat : r.fat.toFixed(1);
+  const kcal = Math.round(r.protein * 4 + r.carbs * 4 + r.fat * 9);
+  document.getElementById('rd-title').textContent = r.name;
+  document.getElementById('rd-macros').innerHTML =
+    `<span class="rd-macro-p">${r.protein}g Protein</span>` +
+    `<span class="rd-macro-c">${r.carbs}g Carbs</span>` +
+    `<span class="rd-macro-f">${fat}g Fat</span>` +
+    `<span class="rd-macro-k">${kcal} kcal</span>`;
+  document.getElementById('rd-body').innerHTML =
+    `<div class="rd-section-label">Ingredients</div>` +
+    `<ul class="rd-ingredients">${(r.ingredients || []).map(i => `<li>${i}</li>`).join('')}</ul>` +
+    `<div class="rd-section-label">Method</div>` +
+    `<ol class="rd-method">${(r.method || []).map(s => `<li>${s}</li>`).join('')}</ol>`;
+  document.getElementById('rd-add-btn').textContent = '+ Add to Today';
+  document.getElementById('recipe-detail-overlay').classList.add('open');
+  document.getElementById('recipe-detail-sheet').classList.add('open');
+}
+
+function closeRecipeDetail() {
+  document.getElementById('recipe-detail-overlay').classList.remove('open');
+  document.getElementById('recipe-detail-sheet').classList.remove('open');
+  _activeDetailRecipe = null;
+}
+
+function addRecipeDetailToToday() {
+  if (!_activeDetailRecipe) return;
+  const r = _activeDetailRecipe;
+  document.getElementById('n-protein').value = Math.round((parseFloat(document.getElementById('n-protein').value) || 0) + r.protein);
+  document.getElementById('n-carbs').value   = Math.round((parseFloat(document.getElementById('n-carbs').value)   || 0) + r.carbs);
+  document.getElementById('n-fat').value     = Math.round((parseFloat(document.getElementById('n-fat').value)     || 0) + r.fat);
+  saveMacros();
+  updateCalTotal();
+  const btn = document.getElementById('rd-add-btn');
+  btn.textContent = '✓ Added';
+  setTimeout(() => { btn.textContent = '+ Add to Today'; }, 1500);
 }
 
 // ── Settings / Goal ────────────────────────────
