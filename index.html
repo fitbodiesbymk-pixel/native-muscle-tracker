@@ -369,24 +369,93 @@
     }
     .btn-add-workout:hover { border-color: var(--silver); color: var(--text); }
 
-    /* ── Day Type Toggle ── */
+    /* ── Day Type Pill ── */
     .day-type-wrap { margin-bottom: 1rem; }
-    .day-type-toggle {
-      display: grid; grid-template-columns: 1fr 1fr 1fr;
+    .day-type-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 10px 5px 8px;
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: 10px; padding: 4px; gap: 4px;
+      border-radius: 20px; cursor: pointer; transition: border-color 0.15s;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .day-type-pill.dtp-standard { color: var(--silver); }
+    .day-type-pill.dtp-high     { color: var(--gold); border-color: #4A3800; }
+    .day-type-pill:hover { border-color: var(--silver); }
+    .dtp-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .dtp-edit { opacity: 0.4; flex-shrink: 0; }
+    .day-type-override {
+      display: none; grid-template-columns: 1fr 1fr 1fr;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 4px; gap: 4px; margin-top: 6px;
     }
     .dtt-btn {
-      padding: 8px 4px; border-radius: 7px; border: none;
+      padding: 7px 4px; border-radius: 7px; border: none;
       background: transparent; color: var(--muted);
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.875rem; font-weight: 700; letter-spacing: 0.05em;
+      font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.05em;
       text-transform: uppercase; cursor: pointer; transition: all 0.15s;
     }
     .dtt-btn:hover { color: var(--text); }
-    .dtt-btn.active-rest     { background: var(--card);   color: var(--sub);  border: 1px solid var(--border); }
-    .dtt-btn.active-standard { background: var(--card);   color: var(--silver); border: 1px solid var(--silver); }
-    .dtt-btn.active-high     { background: #1a1400; color: var(--gold);   border: 1px solid #4A3800; }
+    .dtt-btn.active-rest     { background: var(--card); color: var(--sub);    border: 1px solid var(--border); }
+    .dtt-btn.active-standard { background: var(--card); color: var(--silver); border: 1px solid var(--silver); }
+    .dtt-btn.active-high     { background: #1a1400;     color: var(--gold);   border: 1px solid #4A3800; }
+
+    /* ── Settings Modal ── */
+    .nav-settings-btn {
+      background: none; border: none; color: var(--muted);
+      cursor: pointer; padding: 6px; line-height: 1;
+      display: flex; align-items: center; margin-left: 6px;
+      transition: color 0.15s; border-radius: 6px;
+    }
+    .nav-settings-btn:hover { color: var(--text); }
+    .settings-modal {
+      position: fixed; inset: 0; z-index: 200;
+      display: none; align-items: flex-end; justify-content: center;
+    }
+    .settings-modal.open { display: flex; }
+    .settings-backdrop {
+      position: absolute; inset: 0; background: rgba(0,0,0,0.72);
+    }
+    .settings-sheet {
+      position: relative; width: 100%; max-width: 480px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px 20px 0 0; padding: 1.5rem 1.25rem 2rem;
+      z-index: 1;
+    }
+    .settings-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1.25rem;
+    }
+    .settings-header span {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1.0625rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em; color: var(--text);
+    }
+    .settings-close {
+      background: none; border: none; color: var(--muted);
+      cursor: pointer; font-size: 1.1rem; line-height: 1; padding: 4px 6px;
+    }
+    .settings-section-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.75rem; font-weight: 700;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em;
+      margin-bottom: 0.75rem;
+    }
+    .goal-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .goal-btn {
+      padding: 12px 8px; border-radius: 10px;
+      background: var(--card); border: 1px solid var(--border);
+      color: var(--sub); cursor: pointer;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.9375rem; font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase; transition: all 0.15s; text-align: center;
+    }
+    .goal-btn:hover { border-color: var(--silver); color: var(--text); }
+    .goal-btn.active { background: var(--bg); border-color: var(--silver); color: var(--silver); }
 
     /* ── Progressive Overload ── */
     .workout-hint {
@@ -614,9 +683,14 @@
     <img src="logo.jpg" alt="" class="nav-logo-img">
     <div class="nav-wordmark">NATIVE MUSCLE</div>
   </div>
-  <div class="profile-toggle">
-    <button class="profile-btn" id="pbtn-1" onclick="switchUser('user1')">—</button>
-    <button class="profile-btn" id="pbtn-2" onclick="switchUser('user2')">—</button>
+  <div style="display:flex;align-items:center;gap:4px;">
+    <div class="profile-toggle">
+      <button class="profile-btn" id="pbtn-1" onclick="switchUser('user1')">—</button>
+      <button class="profile-btn" id="pbtn-2" onclick="switchUser('user2')">—</button>
+    </div>
+    <button class="nav-settings-btn" onclick="openSettings()" title="Settings">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
   </div>
 </nav>
 
@@ -671,9 +745,14 @@
       <span class="weight-saved" id="w-saved" style="display:none;">✓ Saved</span>
     </div>
 
-    <!-- Day Type -->
+    <!-- Day Type (auto-classified) -->
     <div class="day-type-wrap">
-      <div class="day-type-toggle">
+      <div class="day-type-pill dtp-rest" id="day-type-pill" onclick="toggleDayTypeOverride()">
+        <span class="dtp-dot" id="dtp-dot" style="background:var(--muted);"></span>
+        <span class="dtp-label" id="dtp-label">Rest</span>
+        <svg class="dtp-edit" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </div>
+      <div class="day-type-override" id="day-type-override">
         <button class="dtt-btn" id="dtt-rest"     onclick="saveDayType('rest')">Rest</button>
         <button class="dtt-btn" id="dtt-standard" onclick="saveDayType('standard')">Standard</button>
         <button class="dtt-btn" id="dtt-high"     onclick="saveDayType('high_output')">High Output</button>
@@ -979,6 +1058,24 @@
 <!-- PR toast -->
 <div class="pr-toast" id="pr-toast"></div>
 
+<!-- Settings modal -->
+<div class="settings-modal" id="settings-modal">
+  <div class="settings-backdrop" onclick="closeSettings()"></div>
+  <div class="settings-sheet">
+    <div class="settings-header">
+      <span>Profile</span>
+      <button class="settings-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="settings-section-label">Current Goal</div>
+    <div class="goal-grid">
+      <button class="goal-btn" id="goal-build"       onclick="saveGoal('build_muscle')">Build Muscle</button>
+      <button class="goal-btn" id="goal-lose"        onclick="saveGoal('lose_fat')">Lose Fat</button>
+      <button class="goal-btn" id="goal-maintain"    onclick="saveGoal('maintain')">Maintain</button>
+      <button class="goal-btn" id="goal-performance" onclick="saveGoal('performance')">Performance</button>
+    </div>
+  </div>
+</div>
+
 <!-- Celebration overlay -->
 <div class="celebrate-overlay" id="celebrate-overlay">
   <div class="celebrate-card">
@@ -1023,6 +1120,7 @@ let saveTimer        = {};
 let exerciseHistory        = {};  // { uid: { exerciseName: [{date,sets,weight,reps,weightNum}] } }
 let exerciseHistoryPromise = {};  // { uid: Promise } — tracks in-flight loads
 let prCelebrated           = new Set();
+let dayTypeManual          = false; // true when user manually overrides auto-classification
 
 // ── Boot ───────────────────────────────────────
 async function boot() {
@@ -1142,6 +1240,8 @@ async function loadToday() {
   document.getElementById('n-fat').value      = '';
   document.getElementById('r-sleep').value    = '';
   document.getElementById('r-soreness').value = '';
+  dayTypeManual = false;
+  document.getElementById('day-type-override').style.display = 'none';
   setDayTypeUI(null);
   document.getElementById('cal-total').textContent = '0';
   ['m-protein','m-carbs','m-fat'].forEach(id => document.getElementById(id).textContent = '—');
@@ -1296,6 +1396,11 @@ function saveActivity() {
     checkAndShowPRs(groups);
     updateHistoryCacheWithToday(groups);
     renderStreak();
+    autoClassifyDayType(
+      parseInt(document.getElementById('act-steps').value) || 0,
+      document.getElementById('act-cardio').value.trim(),
+      groups
+    );
   }, 800);
 }
 
@@ -1421,19 +1526,35 @@ function loadCalTarget() {
 }
 
 function setDayTypeUI(type) {
-  const map = { rest: 'dtt-rest', standard: 'dtt-standard', high_output: 'dtt-high' };
+  const pill  = document.getElementById('day-type-pill');
+  const dot   = document.getElementById('dtp-dot');
+  const label = document.getElementById('dtp-label');
+  const btnMap = { rest: 'dtt-rest', standard: 'dtt-standard', high_output: 'dtt-high' };
   ['dtt-rest','dtt-standard','dtt-high'].forEach(id => {
-    document.getElementById(id).className = 'dtt-btn';
+    const el = document.getElementById(id); if (el) el.className = 'dtt-btn';
   });
-  if (type && map[type]) {
-    const cls = type === 'rest' ? 'active-rest' : type === 'standard' ? 'active-standard' : 'active-high';
-    document.getElementById(map[type]).classList.add(cls);
-  }
+  const t = type || 'rest';
+  const dotColor  = { rest: 'var(--muted)', standard: 'var(--silver)', high_output: 'var(--gold)' };
+  const pillClass = { rest: 'dtp-rest', standard: 'dtp-standard', high_output: 'dtp-high' };
+  const labelText = { rest: 'Rest', standard: 'Standard', high_output: 'High Output' };
+  const btnCls    = { rest: 'active-rest', standard: 'active-standard', high_output: 'active-high' };
+  if (dot)   dot.style.background = dotColor[t];
+  if (label) label.textContent = labelText[t];
+  if (pill)  pill.className = 'day-type-pill ' + pillClass[t];
+  const activeBtn = document.getElementById(btnMap[t]);
+  if (activeBtn) activeBtn.classList.add(btnCls[t]);
 }
 
 async function saveDayType(type) {
+  dayTypeManual = true;
+  document.getElementById('day-type-override').style.display = 'none';
   setDayTypeUI(type);
   await patchDay({ dayType: type });
+}
+
+function toggleDayTypeOverride() {
+  const panel = document.getElementById('day-type-override');
+  panel.style.display = panel.style.display === 'none' ? 'grid' : 'none';
 }
 
 function saveRecovery() {
@@ -1443,6 +1564,27 @@ function saveRecovery() {
     const soreness = parseInt(document.getElementById('r-soreness').value) || null;
     await patchDay({ recovery: { sleep, soreness } });
   }, 600);
+}
+
+function classifyDayType(steps, cardio, groups) {
+  const text = (cardio || '').toLowerCase();
+  const num  = parseFloat((text.match(/(\d+\.?\d*)/) || [])[1]) || 0;
+  const isLongKm    = text.includes('km')  && num >= 8;
+  const isLongMin   = text.includes('min') && num >= 45;
+  const isLongMile  = text.includes('mile') && num >= 5;
+  const isHighSteps = steps >= 15000;
+  const hasStrength = groups.some(g => g.exercises?.some(e => e.exercise?.trim()));
+  const hasCardio   = text.trim().length > 0;
+  if (isLongKm || isLongMin || isLongMile || isHighSteps || (hasStrength && hasCardio)) return 'high_output';
+  if (hasStrength || hasCardio) return 'standard';
+  return 'rest';
+}
+
+function autoClassifyDayType(steps, cardio, groups) {
+  if (dayTypeManual) return;
+  const type = classifyDayType(steps, cardio, groups);
+  setDayTypeUI(type);
+  patchDay({ dayType: type }).catch(() => {});
 }
 
 // ── Streak ─────────────────────────────────────
@@ -1881,6 +2023,35 @@ function showPRToast(exercise, weight) {
   setTimeout(() => toast.classList.remove('show'), 3500);
 }
 
+// ── Settings / Goal ────────────────────────────
+const GOAL_ID_MAP = { build_muscle: 'goal-build', lose_fat: 'goal-lose', maintain: 'goal-maintain', performance: 'goal-performance' };
+const GOAL_LABELS = { build_muscle: 'Build Muscle', lose_fat: 'Lose Fat', maintain: 'Maintain', performance: 'Performance' };
+
+function openSettings() {
+  setGoalUI(profiles[currentUser]?.goal || null);
+  document.getElementById('settings-modal').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('settings-modal').classList.remove('open');
+}
+
+function setGoalUI(goal) {
+  Object.values(GOAL_ID_MAP).forEach(id => {
+    const el = document.getElementById(id); if (el) el.classList.remove('active');
+  });
+  if (goal && GOAL_ID_MAP[goal]) {
+    const el = document.getElementById(GOAL_ID_MAP[goal]); if (el) el.classList.add('active');
+  }
+}
+
+async function saveGoal(goal) {
+  setGoalUI(goal);
+  profiles[currentUser] = profiles[currentUser] || {};
+  profiles[currentUser].goal = goal;
+  await db.collection('profiles').doc(currentUser).set({ goal }, { merge: true });
+}
+
 // ── AI Coach ───────────────────────────────────
 const KNOWLEDGE_BASE = [
   // Kleiner — Nutrition Periodization
@@ -1920,6 +2091,7 @@ async function generateWeeklyReview() {
     const profile = profiles[currentUser] || {};
     const name    = profile.name || 'User';
     const targets = profile.macroTargets || {};
+    const goalLabel = GOAL_LABELS[profile.goal] || 'not set';
 
     const weekData = days.map(d => ({
       date:      d.date,
@@ -1941,6 +2113,7 @@ Hard rules (never override):
 - Nutrition specifics should scale from the user's own logged intake trend, not generic targets.
 - Chunks with confidence "contested" must not override high-confidence evidence.
 - dayType values: "rest" = rest day, "standard" = normal training, "high_output" = heavy or long session. Use this to assess carbohydrate matching per kleiner_001. Flag clear mismatches (high_output day with critically low carbs; rest day with excess calories if a deficit is the goal).
+- User's current goal: ${goalLabel}. Tailor all recommendations to this goal. For Lose Fat: flag rest-day caloric surpluses and reward deficit consistency. For Build Muscle: flag chronic underfueling on training days (per kleiner_002, concurrent_005). For Performance: flag insufficient carbohydrate ahead of or following high-output sessions. For Maintain: flag large week-over-week intake swings. If goal is not set, give general coaching observations.
 
 Respond ONLY with valid JSON — no markdown fences, no prose outside the JSON:
 {
@@ -1954,6 +2127,7 @@ Respond ONLY with valid JSON — no markdown fences, no prose outside the JSON:
 
     const userContent = JSON.stringify({
       user: name,
+      goal: profile.goal || null,
       macro_targets: targets,
       calorie_target: profile.calorieTarget || null,
       week_data: weekData,
