@@ -154,6 +154,14 @@
     .recipe-add-btn:hover { border-color: var(--silver); color: var(--text); }
     .recipe-add-btn.added { border-color: #3a5a3a; color: #6ab06a; background: #0f1f0f; font-size: 0.875rem; }
     .recipe-empty { padding: 1.25rem; text-align: center; font-size: 0.875rem; color: var(--muted); }
+    .recipe-cat-header {
+      padding: 6px 14px 4px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted);
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 1;
+    }
 
     /* ── Views ── */
     .view { display: none; padding-bottom: 70px; }
@@ -2097,22 +2105,57 @@ function showPRToast(exercise, weight) {
 
 // ── Recipes / Find Food ────────────────────────
 const RECIPES = [
-  { name: 'Protein Oats',            protein: 35, carbs: 55, fat:  7 },
-  { name: 'Overnight Oats',          protein: 18, carbs: 58, fat:  9 },
-  { name: 'Egg White Omelette',      protein: 28, carbs:  4, fat:  3 },
-  { name: 'Greek Yogurt & Berries',  protein: 20, carbs: 28, fat:  2 },
-  { name: 'Eggs & Avocado Toast',    protein: 26, carbs: 30, fat: 22 },
-  { name: 'Chicken & Rice',          protein: 58, carbs: 58, fat:  6 },
-  { name: 'Salmon & Sweet Potato',   protein: 40, carbs: 35, fat: 18 },
-  { name: 'Beef & Broccoli',         protein: 50, carbs: 12, fat: 18 },
-  { name: 'Tuna Salad',              protein: 42, carbs:  5, fat: 10 },
-  { name: 'Turkey Wrap',             protein: 38, carbs: 42, fat:  8 },
-  { name: 'Chicken Caesar Salad',    protein: 48, carbs: 10, fat: 16 },
-  { name: 'Steak & Veg',             protein: 52, carbs: 14, fat: 20 },
-  { name: 'Lentil & Veg Bowl',       protein: 18, carbs: 55, fat:  4 },
-  { name: 'Protein Shake',           protein: 48, carbs:  8, fat:  4 },
-  { name: 'Cottage Cheese & Fruit',  protein: 26, carbs: 22, fat:  3 },
-  { name: 'Rice Cakes & Nut Butter', protein:  8, carbs: 28, fat: 12 },
+  // Shakes
+  { cat: 'Shakes', name: 'Classic Protein Shake',         protein: 48, carbs:  8, fat:  4 },
+  { cat: 'Shakes', name: 'Banana Peanut Butter Shake',    protein: 42, carbs: 38, fat: 10 },
+  { cat: 'Shakes', name: 'Cherry Chocolate Protein Shake',protein: 40, carbs: 32, fat: 3.5 },
+  { cat: 'Shakes', name: 'Green Protein Smoothie',        protein: 35, carbs: 28, fat:  5 },
+  { cat: 'Shakes', name: 'Mango Coconut Shake',           protein: 30, carbs: 42, fat:  6 },
+  { cat: 'Shakes', name: 'Blueberry Vanilla Shake',       protein: 38, carbs: 30, fat:  4 },
+  { cat: 'Shakes', name: 'Strawberry Oat Shake',          protein: 36, carbs: 45, fat:  5 },
+  // Breakfast
+  { cat: 'Breakfast', name: 'Protein Oats',               protein: 35, carbs: 55, fat:  7 },
+  { cat: 'Breakfast', name: 'Overnight Oats',             protein: 18, carbs: 58, fat:  9 },
+  { cat: 'Breakfast', name: 'Egg White Omelette',         protein: 28, carbs:  4, fat:  3 },
+  { cat: 'Breakfast', name: 'Greek Yogurt & Berries',     protein: 20, carbs: 28, fat:  2 },
+  { cat: 'Breakfast', name: 'Eggs & Avocado Toast',       protein: 26, carbs: 30, fat: 22 },
+  { cat: 'Breakfast', name: 'Scrambled Eggs & Smoked Salmon', protein: 38, carbs: 2, fat: 14 },
+  { cat: 'Breakfast', name: 'Turkish Eggs (Çılbır)',      protein: 22, carbs:  8, fat: 18 },
+  { cat: 'Breakfast', name: 'Protein Pancakes',           protein: 32, carbs: 38, fat:  6 },
+  // Sandwiches & Burgers
+  { cat: 'Sandwiches & Burgers', name: 'Chicken Caesar Wrap',       protein: 45, carbs: 38, fat: 12 },
+  { cat: 'Sandwiches & Burgers', name: 'Turkey & Avocado Sandwich', protein: 42, carbs: 35, fat: 14 },
+  { cat: 'Sandwiches & Burgers', name: 'Classic Beef Burger',       protein: 48, carbs: 40, fat: 22 },
+  { cat: 'Sandwiches & Burgers', name: 'Grilled Chicken Burger',    protein: 52, carbs: 38, fat: 10 },
+  { cat: 'Sandwiches & Burgers', name: 'Tuna Melt Sandwich',        protein: 44, carbs: 32, fat: 16 },
+  { cat: 'Sandwiches & Burgers', name: 'BLT Chicken Sandwich',      protein: 46, carbs: 36, fat: 15 },
+  { cat: 'Sandwiches & Burgers', name: 'Turkey Wrap',               protein: 38, carbs: 42, fat:  8 },
+  { cat: 'Sandwiches & Burgers', name: 'Falafel Wrap',              protein: 18, carbs: 55, fat: 12 },
+  { cat: 'Sandwiches & Burgers', name: 'Shawarma Wrap',             protein: 42, carbs: 44, fat: 16 },
+  { cat: 'Sandwiches & Burgers', name: 'Egg & Cheese Bagel',        protein: 28, carbs: 48, fat: 14 },
+  { cat: 'Sandwiches & Burgers', name: 'Smoked Salmon Bagel',       protein: 34, carbs: 45, fat: 12 },
+  { cat: 'Sandwiches & Burgers', name: 'Halloumi Burger',           protein: 30, carbs: 38, fat: 22 },
+  // Dinner
+  { cat: 'Dinner', name: 'Chicken & Rice',                protein: 58, carbs: 58, fat:  6 },
+  { cat: 'Dinner', name: 'Salmon & Sweet Potato',         protein: 40, carbs: 35, fat: 18 },
+  { cat: 'Dinner', name: 'Beef & Broccoli',               protein: 50, carbs: 12, fat: 18 },
+  { cat: 'Dinner', name: 'Steak & Veg',                   protein: 52, carbs: 14, fat: 20 },
+  { cat: 'Dinner', name: 'Chicken Caesar Salad',          protein: 48, carbs: 10, fat: 16 },
+  { cat: 'Dinner', name: 'Tuna Salad',                    protein: 42, carbs:  5, fat: 10 },
+  { cat: 'Dinner', name: 'Lentil & Veg Bowl',             protein: 18, carbs: 55, fat:  4 },
+  { cat: 'Dinner', name: 'Grilled Sea Bass & Quinoa',     protein: 44, carbs: 38, fat: 12 },
+  { cat: 'Dinner', name: 'Lamb Kofta & Tabbouleh',        protein: 46, carbs: 28, fat: 20 },
+  { cat: 'Dinner', name: 'Prawn Stir Fry & Noodles',      protein: 38, carbs: 52, fat:  8 },
+  { cat: 'Dinner', name: 'Chicken Shawarma Bowl',         protein: 50, carbs: 45, fat: 14 },
+  { cat: 'Dinner', name: 'Baked Cod & Roasted Veg',       protein: 40, carbs: 22, fat:  8 },
+  { cat: 'Dinner', name: 'Turkey Meatballs & Pasta',      protein: 48, carbs: 62, fat: 12 },
+  { cat: 'Dinner', name: 'Chicken Tagine & Couscous',     protein: 44, carbs: 48, fat: 10 },
+  // Snacks
+  { cat: 'Snacks', name: 'Cottage Cheese & Fruit',        protein: 26, carbs: 22, fat:  3 },
+  { cat: 'Snacks', name: 'Rice Cakes & Nut Butter',       protein:  8, carbs: 28, fat: 12 },
+  { cat: 'Snacks', name: 'Greek Yogurt & Nuts',           protein: 18, carbs: 14, fat: 10 },
+  { cat: 'Snacks', name: 'Hummus & Veg Sticks',           protein:  8, carbs: 18, fat:  8 },
+  { cat: 'Snacks', name: 'Boiled Eggs',                   protein: 12, carbs:  1, fat:  8 },
 ];
 
 function toggleFindFood() {
@@ -2123,44 +2166,53 @@ function toggleFindFood() {
   btn.classList.toggle('open');
   if (!isOpen) {
     document.getElementById('find-food-search').value = '';
-    renderRecipeList(RECIPES);
+    renderRecipeList(RECIPES, false);
     setTimeout(() => document.getElementById('find-food-search').focus(), 80);
   }
 }
 
 function filterRecipes(query) {
   const q = query.trim().toLowerCase();
-  renderRecipeList(q ? RECIPES.filter(r => r.name.toLowerCase().includes(q)) : RECIPES, query);
+  renderRecipeList(q ? RECIPES.filter(r => r.name.toLowerCase().includes(q)) : RECIPES, !!q);
 }
 
-function renderRecipeList(recipes, query = '') {
+function recipeRowHTML(r) {
+  const fat = Number.isInteger(r.fat) ? r.fat : r.fat.toFixed(1);
+  return `<div class="recipe-row">
+    <div class="recipe-name">${r.name}</div>
+    <div class="recipe-macros">
+      <span class="rp">${r.protein}P</span> &middot;
+      <span class="rc">${r.carbs}C</span> &middot;
+      <span class="rf">${fat}F</span>
+    </div>
+    <button class="recipe-add-btn"
+      data-p="${r.protein}" data-c="${r.carbs}" data-f="${r.fat}"
+      onclick="addRecipeToToday(this)" title="Add to today">+</button>
+  </div>`;
+}
+
+function renderRecipeList(recipes, searching = false) {
   const list = document.getElementById('recipe-list');
   if (!recipes.length) {
-    list.innerHTML = `<div class="recipe-empty">No match for "${query}" — add it manually above</div>`;
+    list.innerHTML = `<div class="recipe-empty">No results — add macros manually above</div>`;
     return;
   }
-  list.innerHTML = recipes.map(r => {
-    const kcal = r.protein * 4 + r.carbs * 4 + r.fat * 9;
-    return `
-      <div class="recipe-row">
-        <div class="recipe-name">${r.name}</div>
-        <div class="recipe-macros">
-          <span class="rp">${r.protein}P</span> &middot;
-          <span class="rc">${r.carbs}C</span> &middot;
-          <span class="rf">${r.fat}F</span>
-        </div>
-        <button class="recipe-add-btn"
-          data-p="${r.protein}" data-c="${r.carbs}" data-f="${r.fat}"
-          onclick="addRecipeToToday(this)" title="Add to today">+</button>
-      </div>`;
+  if (searching) {
+    list.innerHTML = recipes.map(recipeRowHTML).join('');
+    return;
+  }
+  const cats = [...new Set(recipes.map(r => r.cat))];
+  list.innerHTML = cats.map(cat => {
+    const rows = recipes.filter(r => r.cat === cat).map(recipeRowHTML).join('');
+    return `<div class="recipe-cat-header">${cat}</div>${rows}`;
   }).join('');
 }
 
 function addRecipeToToday(el) {
-  const p = parseInt(el.dataset.p), c = parseInt(el.dataset.c), f = parseInt(el.dataset.f);
-  document.getElementById('n-protein').value = (parseInt(document.getElementById('n-protein').value) || 0) + p;
-  document.getElementById('n-carbs').value   = (parseInt(document.getElementById('n-carbs').value)   || 0) + c;
-  document.getElementById('n-fat').value     = (parseInt(document.getElementById('n-fat').value)     || 0) + f;
+  const p = parseFloat(el.dataset.p), c = parseFloat(el.dataset.c), f = parseFloat(el.dataset.f);
+  document.getElementById('n-protein').value = Math.round((parseFloat(document.getElementById('n-protein').value) || 0) + p);
+  document.getElementById('n-carbs').value   = Math.round((parseFloat(document.getElementById('n-carbs').value)   || 0) + c);
+  document.getElementById('n-fat').value     = Math.round((parseFloat(document.getElementById('n-fat').value)     || 0) + f);
   saveMacros();
   updateCalTotal();
   el.textContent = '✓'; el.classList.add('added');
