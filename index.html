@@ -369,6 +369,30 @@
     }
     .btn-add-workout:hover { border-color: var(--silver); color: var(--text); }
 
+    /* ── Progressive Overload ── */
+    .workout-hint {
+      display: none; font-size: 0.75rem; color: var(--muted);
+      padding: 2px 0 5px 20px; font-family: 'Barlow', sans-serif; line-height: 1.4;
+    }
+    .workout-hint.has-data { display: block; }
+    .hint-date { color: var(--border); margin-left: 4px; }
+    .workout-pr-badge {
+      display: inline-block; background: #1a1400; color: var(--gold);
+      font-size: 0.6875rem; font-weight: 700; padding: 1px 6px; border-radius: 4px;
+      border: 1px solid #4A3800; margin-left: 6px; letter-spacing: 0.04em;
+    }
+    .pr-toast {
+      position: fixed; top: 68px; left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      background: #1a1400; border: 1px solid var(--gold);
+      color: var(--gold); border-radius: 8px; padding: 10px 20px;
+      font-family: 'Barlow Condensed', sans-serif; font-size: 0.9375rem;
+      font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      z-index: 9998; opacity: 0; transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none; white-space: nowrap;
+    }
+    .pr-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
     /* ── TRENDS VIEW ── */
     .trends-header { padding: 1.25rem 0 0.75rem; }
     .trends-header h2 {
@@ -924,6 +948,9 @@
   </button>
 </nav>
 
+<!-- PR toast -->
+<div class="pr-toast" id="pr-toast"></div>
+
 <!-- Celebration overlay -->
 <div class="celebrate-overlay" id="celebrate-overlay">
   <div class="celebrate-card">
@@ -958,13 +985,15 @@ try {
 } catch(e) { console.error(e); }
 
 // ── State ──────────────────────────────────────
-let currentUser  = localStorage.getItem('nm_user') || 'user1';
-let profiles     = {};
-let currentDate  = todayStr();
-let dayData      = {};   // cache: { [uid]: { [date]: dayDoc } }
-let trendRange   = 7;
-let charts       = {};
-let saveTimer    = {};
+let currentUser      = localStorage.getItem('nm_user') || 'user1';
+let profiles         = {};
+let currentDate      = todayStr();
+let dayData          = {};
+let trendRange       = 7;
+let charts           = {};
+let saveTimer        = {};
+let exerciseHistory  = {};  // { uid: { exerciseName: [{date,sets,weight,reps,weightNum}] } }
+let prCelebrated     = new Set();
 
 // ── Boot ───────────────────────────────────────
 async function boot() {
@@ -1009,6 +1038,8 @@ function updateNav() {
 function switchUser(uid) {
   currentUser = uid;
   localStorage.setItem('nm_user', uid);
+  prCelebrated.clear();
+  exerciseHistory[uid] = null;
   updateNav();
   loadCalTarget();
   loadMacroTargets();
@@ -1031,9 +1062,9 @@ function showView(name, setup = false) {
   bnav.style.display = 'flex';
   const bn = document.getElementById('bn-' + name);
   if (bn) bn.classList.add('active');
-  if (name === 'trends')     renderTrends();
-  if (name === 'acct')       renderAcct();
-  if (name === 'train')      renderStreak();
+  if (name === 'trends') renderTrends();
+  if (name === 'acct')   renderAcct();
+  if (name === 'train')  { renderStreak(); loadExerciseHistory(currentUser); }
 }
 
 // ── Date navigation ────────────────────────────
@@ -1067,6 +1098,7 @@ function fmtShort(str) {
 
 // ── Load / save day ────────────────────────────
 async function loadToday() {
+  prCelebrated.clear();
   updateDayHeader();
   document.getElementById('w-input').value  = '';
   document.getElementById('w-saved').style.display = 'none';
@@ -1159,9 +1191,9 @@ function addWorkoutGroup(type, data = []) {
     const ex = data[i] || {};
     const row = document.createElement('div');
     row.className = 'workout-row';
-    const mkInput = (type, cls, ph, val, min) => {
+    const mkInput = (t, cls, ph, val, min) => {
       const el = document.createElement('input');
-      el.type = type; el.className = cls; el.placeholder = ph; el.value = val || '';
+      el.type = t; el.className = cls; el.placeholder = ph; el.value = val || '';
       if (min !== undefined) el.min = min;
       el.oninput = saveActivity;
       return el;
@@ -1172,15 +1204,29 @@ function addWorkoutGroup(type, data = []) {
     const del = document.createElement('button');
     del.className = 'workout-group-del'; del.title = 'Remove'; del.textContent = '×';
     del.onclick = () => { group.remove(); saveActivity(); };
+
+    const exInput = mkInput('text', 'ex-exercise', 'e.g. Bench press', ex.exercise);
+    const wtInput = mkInput('text', 'ex-weight',   '100kg',            ex.weight);
+    const hintDiv = document.createElement('div');
+    hintDiv.className = 'workout-hint';
+
+    exInput.oninput = () => { saveActivity(); updateExerciseHint(exInput, wtInput, hintDiv); };
+    wtInput.oninput = () => { saveActivity(); updateExerciseHint(exInput, wtInput, hintDiv); };
+
     row.append(
       letter,
-      mkInput('text',   'ex-exercise', 'e.g. Bench press', ex.exercise),
-      mkInput('number', 'ex-sets',     '3',                ex.sets, 1),
-      mkInput('text',   'ex-weight',   '100kg',            ex.weight),
-      mkInput('number', 'ex-reps',     '8',                ex.reps, 1),
+      exInput,
+      mkInput('number', 'ex-sets', '3', ex.sets, 1),
+      wtInput,
+      mkInput('number', 'ex-reps', '8', ex.reps, 1),
       i === 0 ? del : document.createElement('span')
     );
     group.appendChild(row);
+    group.appendChild(hintDiv);
+
+    if (ex.exercise?.trim()) {
+      setTimeout(() => updateExerciseHint(exInput, wtInput, hintDiv), 200);
+    }
   }
   container.appendChild(group);
 }
@@ -1206,13 +1252,16 @@ function getWorkoutGroups() {
 function saveActivity() {
   clearTimeout(saveTimer.activity);
   saveTimer.activity = setTimeout(async () => {
+    const groups = getWorkoutGroups();
     await patchDay({
       activity: {
         steps:    parseInt(document.getElementById('act-steps').value) || 0,
         cardio:   document.getElementById('act-cardio').value.trim(),
-        training: getWorkoutGroups(),
+        training: groups,
       }
     });
+    checkAndShowPRs(groups);
+    updateHistoryCacheWithToday(groups);
     renderStreak();
   }, 800);
 }
@@ -1669,6 +1718,115 @@ async function renderAcct() {
     ds(profiles.user1?.name||'User 1', allDates.map(d => m1[d]?.nutrition?.kcal || null), '#C4C2BE'),
     ds(profiles.user2?.name||'User 2', allDates.map(d => m2[d]?.nutrition?.kcal || null), '#B8955A'),
   ]);
+}
+
+// ── Progressive Overload ───────────────────────
+async function loadExerciseHistory(uid) {
+  if (exerciseHistory[uid]) return;
+  exerciseHistory[uid] = {};
+  try {
+    const days = await loadDayRange(uid, 60);
+    for (const day of days) {
+      if (!day.activity?.training?.length) continue;
+      for (const group of day.activity.training) {
+        for (const ex of (group.exercises || [])) {
+          if (!ex.exercise?.trim()) continue;
+          const key = ex.exercise.trim().toLowerCase();
+          if (!exerciseHistory[uid][key]) exerciseHistory[uid][key] = [];
+          exerciseHistory[uid][key].push({
+            date: day.date,
+            sets: ex.sets,
+            weight: ex.weight,
+            reps: ex.reps,
+            weightNum: parseFloat((ex.weight || '').replace(/[^0-9.]/g, '')) || 0,
+          });
+        }
+      }
+    }
+    for (const key in exerciseHistory[uid]) {
+      exerciseHistory[uid][key].sort((a, b) => b.date.localeCompare(a.date));
+    }
+    // Populate any hints already on screen
+    document.querySelectorAll('#workout-groups .workout-row').forEach(row => {
+      const exInput = row.querySelector('.ex-exercise');
+      const wtInput = row.querySelector('.ex-weight');
+      const hintDiv = row.nextElementSibling;
+      if (exInput && wtInput && hintDiv?.classList.contains('workout-hint') && exInput.value.trim()) {
+        updateExerciseHint(exInput, wtInput, hintDiv);
+      }
+    });
+  } catch(e) { console.error('loadExerciseHistory', e); }
+}
+
+function updateExerciseHint(exInput, wtInput, hintDiv) {
+  const uid  = currentUser;
+  const name = exInput.value.trim();
+  if (!name || !exerciseHistory[uid]) { hintDiv.className = 'workout-hint'; hintDiv.innerHTML = ''; return; }
+  const key     = name.toLowerCase();
+  const history = exerciseHistory[uid][key];
+  if (!history?.length) { hintDiv.className = 'workout-hint'; hintDiv.innerHTML = ''; return; }
+
+  const last        = history[0];
+  const todayStr    = localDateStr(new Date());
+  const isToday     = last.date === todayStr;
+  const histForPR   = history.filter(h => h.date !== todayStr);
+  const prWeight    = histForPR.length ? Math.max(...histForPR.map(h => h.weightNum)) : 0;
+  const curWeight   = parseFloat((wtInput.value || '').replace(/[^0-9.]/g, '')) || 0;
+  const isPR        = curWeight > 0 && prWeight > 0 && curWeight > prWeight;
+
+  const dateLabel   = isToday ? 'earlier today' : fmtShort(last.date);
+  const lastStr     = `Last: ${last.sets||'?'} × ${last.weight||'?'} × ${last.reps||'?'} reps`;
+  const prBadge     = isPR ? ' <span class="workout-pr-badge">🏆 New PR</span>' : '';
+
+  hintDiv.className = 'workout-hint has-data';
+  hintDiv.innerHTML = `${lastStr} <span class="hint-date">${dateLabel}</span>${prBadge}`;
+}
+
+function checkAndShowPRs(groups) {
+  if (!exerciseHistory[currentUser]) return;
+  const todayStr = localDateStr(new Date());
+  for (const group of groups) {
+    for (const ex of (group.exercises || [])) {
+      if (!ex.exercise?.trim() || !ex.weight) continue;
+      const key     = ex.exercise.trim().toLowerCase();
+      if (prCelebrated.has(key)) continue;
+      const curW    = parseFloat(ex.weight.replace(/[^0-9.]/g, '')) || 0;
+      if (!curW) continue;
+      const history = exerciseHistory[currentUser][key] || [];
+      const prWeight = Math.max(0, ...history.filter(h => h.date !== todayStr).map(h => h.weightNum));
+      if (prWeight > 0 && curW > prWeight) {
+        prCelebrated.add(key);
+        showPRToast(ex.exercise, ex.weight);
+        return;
+      }
+    }
+  }
+}
+
+function updateHistoryCacheWithToday(groups) {
+  const uid      = currentUser;
+  const todayStr = localDateStr(new Date());
+  if (!exerciseHistory[uid]) return;
+  for (const group of groups) {
+    for (const ex of (group.exercises || [])) {
+      if (!ex.exercise?.trim()) continue;
+      const key = ex.exercise.trim().toLowerCase();
+      if (!exerciseHistory[uid][key]) exerciseHistory[uid][key] = [];
+      exerciseHistory[uid][key] = exerciseHistory[uid][key].filter(h => h.date !== todayStr);
+      exerciseHistory[uid][key].unshift({
+        date: todayStr,
+        sets: ex.sets, weight: ex.weight, reps: ex.reps,
+        weightNum: parseFloat((ex.weight || '').replace(/[^0-9.]/g, '')) || 0,
+      });
+    }
+  }
+}
+
+function showPRToast(exercise, weight) {
+  const toast = document.getElementById('pr-toast');
+  toast.textContent = `🏆 New PR — ${exercise} ${weight}`;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3500);
 }
 
 // ── AI Coach ───────────────────────────────────
