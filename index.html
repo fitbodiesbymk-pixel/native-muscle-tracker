@@ -216,18 +216,37 @@
       transition: background 0.15s, border-color 0.15s;
     }
     .recipe-detail-add:active { background: var(--bg); border-color: var(--silver); }
-    .recipe-cat-header {
-      padding: 10px 14px 8px;
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.9375rem; font-weight: 700; letter-spacing: 0.08em;
-      text-transform: uppercase; color: var(--text);
-      background: var(--card);
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      border-left: 3px solid var(--silver);
-      position: sticky; top: 0; z-index: 1;
+    .recipe-cat-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px; padding: 12px;
     }
-    .recipe-cat-header:first-child { border-top: none; }
+    .recipe-cat-tile {
+      padding: 18px 10px 14px;
+      background: var(--card); border: 1px solid var(--border);
+      border-left: 3px solid var(--silver);
+      border-radius: 10px; cursor: pointer;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1rem; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--text);
+      text-align: left; transition: border-color 0.15s, background 0.15s;
+    }
+    .recipe-cat-tile:active { background: var(--bg); border-color: var(--silver); }
+    .recipe-cat-tile.full-width { grid-column: 1 / -1; }
+    .recipe-cat-count {
+      display: block; font-family: 'Barlow', sans-serif;
+      font-size: 0.75rem; font-weight: 400; color: var(--muted);
+      letter-spacing: 0; text-transform: none; margin-top: 4px;
+    }
+    .recipe-cat-back {
+      display: flex; align-items: center; gap: 6px;
+      padding: 10px 14px; border-bottom: 1px solid var(--border);
+      cursor: pointer; background: var(--surface);
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .recipe-cat-back:active { color: var(--text); }
+    .recipe-cat-header { display: none; }
 
     /* ── Views ── */
     .view { display: none; padding-bottom: 70px; }
@@ -2346,7 +2365,35 @@ function toggleFindFood() {
 
 function filterRecipes(query) {
   const q = query.trim().toLowerCase();
-  renderRecipeList(q ? RECIPES.filter(r => r.name.toLowerCase().includes(q)) : RECIPES, !!q);
+  if (!q) { renderCategoryPicker(); return; }
+  const results = RECIPES.filter(r => r.name.toLowerCase().includes(q));
+  const list = document.getElementById('recipe-list');
+  if (!results.length) {
+    list.innerHTML = `<div class="recipe-empty">No results — add macros manually above</div>`;
+    return;
+  }
+  list.innerHTML = results.map(recipeRowHTML).join('');
+}
+
+function renderCategoryPicker() {
+  const list = document.getElementById('recipe-list');
+  const cats = [...new Set(RECIPES.map(r => r.cat))];
+  const tiles = cats.map((cat, i) => {
+    const count = RECIPES.filter(r => r.cat === cat).length;
+    const isLast = cats.length % 2 !== 0 && i === cats.length - 1;
+    return `<button class="recipe-cat-tile${isLast ? ' full-width' : ''}" onclick="selectRecipeCategory('${cat.replace(/'/g,"\\'")}')">
+      ${cat}<span class="recipe-cat-count">${count} recipes</span>
+    </button>`;
+  }).join('');
+  list.innerHTML = `<div class="recipe-cat-grid">${tiles}</div>`;
+}
+
+function selectRecipeCategory(cat) {
+  const list = document.getElementById('recipe-list');
+  const recipes = RECIPES.filter(r => r.cat === cat);
+  list.innerHTML =
+    `<div class="recipe-cat-back" onclick="renderCategoryPicker()">&#8592; All Categories</div>` +
+    recipes.map(recipeRowHTML).join('');
 }
 
 function recipeRowHTML(r) {
@@ -2366,20 +2413,7 @@ function recipeRowHTML(r) {
 }
 
 function renderRecipeList(recipes, searching = false) {
-  const list = document.getElementById('recipe-list');
-  if (!recipes.length) {
-    list.innerHTML = `<div class="recipe-empty">No results — add macros manually above</div>`;
-    return;
-  }
-  if (searching) {
-    list.innerHTML = recipes.map(recipeRowHTML).join('');
-    return;
-  }
-  const cats = [...new Set(recipes.map(r => r.cat))];
-  list.innerHTML = cats.map(cat => {
-    const rows = recipes.filter(r => r.cat === cat).map(recipeRowHTML).join('');
-    return `<div class="recipe-cat-header">${cat}</div>${rows}`;
-  }).join('');
+  renderCategoryPicker();
 }
 
 function addRecipeToToday(el) {
