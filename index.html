@@ -1151,6 +1151,10 @@
       <div class="chart-title">Macronutrients (g)</div>
       <div class="chart-wrap"><canvas id="ch-macros"></canvas></div>
     </div>
+    <div class="chart-card" id="photo-card" style="display:none">
+      <div class="chart-title">Physique check-ins</div>
+      <div id="photo-list"></div>
+    </div>
   </div>
 </div>
 
@@ -1904,6 +1908,36 @@ async function renderTrends() {
     dsBar('Carbs',   carbs,   '#E8A838'),
     dsBar('Fat',     fat,     '#D46B6B'),
   ]);
+  renderPhotos().catch(e => console.error('photos', e));
+}
+
+async function renderPhotos() {
+  const card = document.getElementById('photo-card');
+  const list = document.getElementById('photo-list');
+  const snap = await db.collection('logs').doc(currentUser).collection('photos').get();
+  const items = [];
+  snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+  items.sort((a, b) => (b.date || b.id).localeCompare(a.date || a.id));
+  list.textContent = '';
+  card.style.display = items.length ? '' : 'none';
+  items.forEach(it => {
+    const head = document.createElement('div');
+    head.style.cssText = 'color:var(--sub);font-size:0.8rem;margin:0.75rem 0 0.5rem;';
+    const dt = it.date || it.id;
+    head.textContent = fmtShort(dt) + (it.weight ? ' · ' + it.weight + ' kg' : '') + (it.note ? ' · ' + it.note : '');
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;';
+    [['front', it.front], ['back', it.back]].forEach(([label, src]) => {
+      if (!src) return;
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = label + ' view, ' + dt;
+      img.style.cssText = 'width:100%;height:auto;border-radius:8px;border:1px solid var(--border);display:block;';
+      grid.appendChild(img);
+    });
+    list.appendChild(head);
+    list.appendChild(grid);
+  });
 }
 
 async function loadDayRange(uid, numDays) {
