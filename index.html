@@ -1886,6 +1886,36 @@ function setRange(days) {
     document.getElementById('rb-' + d).className = 'range-btn' + (d === days ? ' active' : '');
   });
   renderTrends();
+  renderPhotos().catch(e => console.error('photos', e));
+}
+
+async function renderPhotos() {
+  const card = document.getElementById('photo-card');
+  const list = document.getElementById('photo-list');
+  const snap = await db.collection('logs').doc(currentUser).collection('photos').get();
+  const items = [];
+  snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+  items.sort((a, b) => (b.date || b.id).localeCompare(a.date || a.id));
+  list.textContent = '';
+  card.style.display = items.length ? '' : 'none';
+  items.forEach(it => {
+    const head = document.createElement('div');
+    head.style.cssText = 'color:var(--sub);font-size:0.8rem;margin:0.75rem 0 0.5rem;';
+    const dt = it.date || it.id;
+    head.textContent = fmtShort(dt) + (it.weight ? ' · ' + it.weight + ' kg' : '') + (it.note ? ' · ' + it.note : '');
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;';
+    [['front', it.front], ['back', it.back]].forEach(([label, src]) => {
+      if (!src) return;
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = label + ' view, ' + dt;
+      img.style.cssText = 'width:100%;height:auto;border-radius:8px;border:1px solid var(--border);display:block;';
+      grid.appendChild(img);
+    });
+    list.appendChild(head);
+    list.appendChild(grid);
+  });
 }
 
 async function renderTrends() {
@@ -2562,6 +2592,19 @@ const KNOWLEDGE_BASE = [
   { id:"injury_001", category:"recovery", principle:"After soft-tissue tightness or pain during a session, don't judge re-entry by the immediate test alone. Watch for a delayed reaction over the following 24–48 hours, then require a second clean confirming session before resuming normal volume/load progression. A single pain-free session isn't sufficient confirmation on its own.", confidence:"coaching-philosophy" },
   { id:"recovery_001", category:"recovery", principle:"When 'easy' runs consistently land faster than the prescribed easy pace/RPE, treat it as pace creep worth flagging, not just improved fitness — it borrows recovery capacity from upcoming harder sessions and can mask early overreaching if it persists alongside rising soreness or falling sleep quality.", confidence:"coaching-philosophy" },
   { id:"programming_007", category:"programming", principle:"A deload every 5th–6th week (strength volume and long-run distance both dropped ~30–40% for that week) is a reasonable default cadence during base/build blocks for masters athletes (40+), applied proactively rather than only after fatigue shows up.", confidence:"coaching-philosophy" },
+  // Physique Transformation — fat-loss and muscle-gain process rules
+  { id:"physique_001", category:"nutrition", principle:"Confirm maintenance before cutting. Average logged intake over at least 2 weeks while bodyweight trend holds roughly flat; that average is the baseline. A deficit sized from a guessed or unconfirmed number is the most common cause of stalled or muscle-costly cuts.", confidence:"high" },
+  { id:"physique_002", category:"nutrition", principle:"Change one variable at a time. First reduce intake (~10–20% below confirmed maintenance). Add or increase cardio only after 2 flat weeks at that intake. Never cut calories and add cardio in the same week, or it becomes impossible to tell what worked.", confidence:"coaching-philosophy" },
+  { id:"physique_003", category:"training", principle:"In a deficit, keep training loads on the main lifts as close to pre-diet levels as possible. Load is the primary signal for retaining muscle. Switching to lighter 'toning' or high-rep work during a cut increases muscle loss; reduce volume before reducing load if recovery suffers.", confidence:"high" },
+  { id:"physique_004", category:"nutrition", principle:"Target fat-loss rate of roughly 0.5–1.0% of bodyweight per week, judged on a 7-day average, not single weigh-ins. Faster loss tends to cost strength and muscle, especially in lean or older lifters; slower than 0.25%/week for 2+ weeks counts as a stall.", confidence:"high" },
+  { id:"physique_005", category:"nutrition", principle:"Protein for masters lifters (40+): per-meal dose matters because of anabolic resistance. Aim for ~0.4 g/kg per meal across 3–5 meals. In a deficit, total protein toward 2.2–2.6 g/kg of lean mass (≈1.8–2.2 g/kg bodyweight) protects muscle.", confidence:"high" },
+  { id:"physique_006", category:"nutrition", principle:"Do not drive dietary fat below ~20% of calories (or ~0.6 g/kg) for extended periods. Very-low-fat intakes are associated with lower testosterone in men. When cutting calories, take most of the reduction from carbohydrate and fat proportionally, protecting carbs on high-output days.", confidence:"moderate-high" },
+  { id:"physique_007", category:"programming", principle:"Diagnose a stall in order: (1) training log — are loads/reps progressing or holding? (2) consistency — are logged days complete, are weekends logged? (3) protein adequacy, (4) only then adjust calories. Adding food or cutting food before checking the log usually fixes the wrong thing.", confidence:"coaching-philosophy" },
+  { id:"physique_008", category:"nutrition", principle:"Planned refeeds and diet breaks during longer cuts (e.g. a higher-carb day every 4th–7th day, or 1–2 weeks at maintenance every 6–10 weeks) support training quality and adherence and may improve fat-loss efficiency. Schedule them in advance rather than as a reaction to burnout.", confidence:"moderate" },
+  { id:"physique_009", category:"training", principle:"Most working sets can stop 1–3 reps short of failure with similar hypertrophy and less fatigue. Reserve true failure and intensity techniques (rest-pause, drop sets, partials) for the final set of machine or isolation exercises, especially for masters athletes or during concurrent endurance training.", confidence:"high" },
+  { id:"physique_010", category:"recovery", principle:"Visible change beats numbers. Weekly physique check-ins in the same location, lighting and time of day are more reliable for judging a cut than body-fat readings. If any area looks leaner week to week, keep the current plan unchanged.", confidence:"coaching-philosophy" },
+  { id:"physique_011", category:"training", principle:"CONTESTED: Fasted morning cardio is often promoted for extra fat loss. Over a full day, fasted and fed cardio produce similar fat loss. Choose timing for adherence and session quality; fuel long or high-output sessions.", confidence:"contested" },
+  { id:"physique_012", category:"nutrition", principle:"For muscle gain in trained natural lifters, raise intake in steps (~5–10% above maintenance, carb-led) and target slow gain of ~0.25–0.5% bodyweight per month. Faster gain is mostly fat. Reassess after 2 weeks before adding more.", confidence:"moderate-high" },
 ];
 
 async function generateWeeklyReview() {
@@ -2573,7 +2616,7 @@ async function generateWeeklyReview() {
   output.classList.remove('show');
 
   try {
-    const days    = await loadDayRange(currentUser, 7);
+    const days    = await loadDayRange(currentUser, 14);
     const profile = profiles[currentUser] || {};
     const name    = profile.name || 'User';
     const targets = profile.macroTargets || {};
@@ -2584,7 +2627,14 @@ async function generateWeeklyReview() {
       dayType:   d.dayType  || null,
       weight:    d.weight   || null,
       nutrition: d.nutrition ? { kcal: d.nutrition.kcal, protein: d.nutrition.protein, carbs: d.nutrition.carbs, fat: d.nutrition.fat } : null,
-      training:  d.activity  ? { steps: d.activity.steps || 0, cardio: d.activity.cardio || null, groups: d.activity.training?.length || 0 } : null,
+      training:  d.activity  ? {
+        steps: d.activity.steps || 0,
+        cardio: d.activity.cardio || null,
+        groups: d.activity.training?.length || 0,
+        lifts: (d.activity.training || []).flatMap(g => (g.exercises || [])
+          .filter(e => e.exercise)
+          .map(e => ({ exercise: e.exercise, sets: e.sets || null, weight: e.weight || null, reps: e.reps || null }))),
+      } : null,
       recovery:  d.recovery  ? { sleep: d.recovery.sleep, soreness: d.recovery.soreness } : null,
     }));
 
@@ -2600,6 +2650,11 @@ Hard rules (never override):
 - Chunks with confidence "contested" must not override high-confidence evidence.
 - dayType values: "rest" = rest day, "standard" = normal training, "high_output" = heavy or long session. Use this to assess carbohydrate matching per kleiner_001. Flag clear mismatches (high_output day with critically low carbs; rest day with excess calories if a deficit is the goal).
 - User's current goal: ${goalLabel}. Tailor all recommendations to this goal. For Lose Fat: flag rest-day caloric surpluses and reward deficit consistency. For Build Muscle: flag chronic underfueling on training days (per kleiner_002, concurrent_005). For Performance: flag insufficient carbohydrate ahead of or following high-output sessions. For Maintain: flag large week-over-week intake swings. If goal is not set, give general coaching observations.
+- week_data covers the last 14 days, oldest first. Write the review about the most recent 7 days; use the earlier 7 only for trends (weight average change, intake consistency, lift loads).
+- For Lose Fat: if there is no evidence of a confirmed maintenance baseline (about 2 weeks of logged intake with a flat weight trend), say so and recommend confirming it before deepening any deficit (physique_001).
+- Never recommend reducing calories and adding cardio in the same week (physique_002).
+- For Lose Fat: compare loads on repeated lifts across the 14 days. Flag any clear drop in load on the main lifts (physique_003).
+- Flag a 7-day average weight change faster than 1% of bodyweight per week in either direction (physique_004, physique_012).
 
 Respond ONLY with valid JSON — no markdown fences, no prose outside the JSON:
 {
@@ -2652,7 +2707,13 @@ Respond ONLY with valid JSON — no markdown fences, no prose outside the JSON:
     const flagsEl  = document.getElementById('cr-flags');
     if (parsed.flags?.length) {
       flagsSec.style.display = 'block';
-      flagsEl.innerHTML = parsed.flags.map(f => `<span class="coach-flag">${f}</span>`).join(' ');
+      flagsEl.innerHTML = '';
+      parsed.flags.forEach(f => {
+        const s = document.createElement('span');
+        s.className = 'coach-flag';
+        s.textContent = String(f);
+        flagsEl.append(s, ' ');
+      });
     } else {
       flagsSec.style.display = 'none';
     }
