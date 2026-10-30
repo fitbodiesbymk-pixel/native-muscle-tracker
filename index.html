@@ -615,6 +615,23 @@
     .goal-btn:hover { border-color: var(--silver); color: var(--text); }
     .goal-btn.active { background: var(--bg); border-color: var(--silver); color: var(--silver); }
 
+    /* ── Smart targets ── */
+    .smart-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.75rem; }
+    .smart-title { font-family:'Barlow Condensed',sans-serif; font-size:0.9375rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--text); }
+    .smart-load { font-family:'Barlow Condensed',sans-serif; font-size:0.8125rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--gold); }
+    .smart-chips { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:0.75rem; }
+    .smart-chip { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:8px 4px; text-align:center; }
+    .smart-chip-val { font-family:'Barlow Condensed',sans-serif; font-size:1.25rem; font-weight:700; color:var(--text); line-height:1.1; }
+    .smart-chip-key { font-size:0.6875rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; }
+    .smart-reasons { list-style:none; margin:0 0 0.75rem; padding:0; font-size:0.8125rem; color:var(--sub); line-height:1.6; }
+    .smart-reasons li { display:flex; justify-content:space-between; gap:12px; }
+    .smart-reasons .up { color:var(--gold); } .smart-reasons .down { color:var(--silver); }
+    .smart-tmr-label { font-size:0.6875rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px; }
+    .smart-tmr { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+    .smart-tmr button { padding:9px 4px; border-radius:8px; background:var(--card); border:1px solid var(--border); color:var(--sub); cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-size:0.875rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; }
+    .smart-tmr button.active { background:var(--bg); border-color:var(--silver); color:var(--silver); }
+    .smart-tmr button.guess { border-style:dashed; color:var(--text); }
+
     /* ── Progressive Overload ── */
     .workout-hint {
       display: none; font-size: 0.75rem; color: var(--muted);
@@ -971,6 +988,23 @@
       </div>
     </div>
 
+    <!-- Smart targets -->
+    <div class="card" id="smart-card" style="display:none; margin-bottom:12px;">
+      <div class="smart-head">
+        <span class="smart-title">Today's smart targets</span>
+        <span class="smart-load" id="smart-load"></span>
+      </div>
+      <div class="smart-chips" id="smart-chips"></div>
+      <ul class="smart-reasons" id="smart-reasons"></ul>
+      <div class="smart-tmr-label">Tomorrow</div>
+      <div class="smart-tmr" id="smart-tmr">
+        <button data-k="rest"  onclick="setNextDay('rest')">Rest</button>
+        <button data-k="easy"  onclick="setNextDay('easy')">Easy</button>
+        <button data-k="hard"  onclick="setNextDay('hard')">Hard</button>
+        <button data-k="long"  onclick="setNextDay('long')">Long run</button>
+      </div>
+    </div>
+
     <!-- Nutrition -->
     <div class="sec-label">Nutrition</div>
     <div class="card">
@@ -1267,6 +1301,9 @@
       <button class="goal-btn" id="goal-maintain"    onclick="saveGoal('maintain')">Maintain</button>
       <button class="goal-btn" id="goal-performance" onclick="saveGoal('performance')">Performance</button>
     </div>
+    <div class="settings-section-label" style="margin-top:1.25rem;">Smart targets</div>
+    <button class="goal-btn" id="smart-toggle" style="width:100%;" onclick="toggleSmart()">Off</button>
+    <div style="font-size:0.75rem;color:var(--muted);margin-top:8px;line-height:1.5;">Adjusts each day's carb and calorie target from the work you did, tomorrow's plan, your goal and your weight trend. Your own targets become the base for a moderate day.</div>
   </div>
 </div>
 
@@ -1459,6 +1496,7 @@ async function loadToday() {
     dayData[currentUser] = dayData[currentUser] || {};
     dayData[currentUser][currentDate] = data;
     populateDay(data);
+    refreshSmart();
   } catch(e) { console.error(e); }
 }
 
@@ -1516,6 +1554,7 @@ async function saveWeight() {
   const val = parseFloat(document.getElementById('w-input').value);
   if (!val) return;
   await patchDay({ weight: val });
+  refreshSmart();
   document.getElementById('w-saved').style.display = 'block';
   setTimeout(() => { document.getElementById('w-saved').style.display = 'none'; }, 2000);
 }
@@ -1602,6 +1641,7 @@ function saveActivity() {
     checkAndShowPRs(groups);
     updateHistoryCacheWithToday(groups);
     renderStreak();
+    refreshSmart();
     autoClassifyDayType(
       parseInt(document.getElementById('act-steps').value) || 0,
       document.getElementById('act-cardio').value.trim(),
@@ -1648,6 +1688,7 @@ function saveMacroTarget(macro) {
       { macroTargets: { [macro]: val } }, { merge: true }
     );
     updateCalTotal();
+    refreshSmart();
   }, 600);
 }
 
@@ -1674,7 +1715,7 @@ function updateCalTotal() {
 }
 
 function updateMacroProgress(protein, carbs, fat) {
-  const targets = profiles[currentUser]?.macroTargets || {};
+  const targets = effectiveTargets();
   const consumed = { protein, carbs, fat };
   ['protein', 'carbs', 'fat'].forEach(m => {
     const c      = consumed[m];
@@ -1701,7 +1742,7 @@ function updateMacroProgress(protein, carbs, fat) {
 }
 
 function updateCalProgress(consumed) {
-  const target = profiles[currentUser]?.calorieTarget || 0;
+  const target = effectiveTargets().kcal || 0;
   const wrap   = document.getElementById('cal-progress-wrap');
   const fill   = document.getElementById('cal-progress-fill');
   const label  = document.getElementById('cal-progress-label');
@@ -1724,6 +1765,7 @@ async function saveCalTarget() {
   profiles[currentUser].calorieTarget = val;
   await db.collection('profiles').doc(currentUser).set({ calorieTarget: val }, { merge: true });
   updateCalTotal();
+  refreshSmart();
 }
 
 function loadCalTarget() {
@@ -1773,6 +1815,10 @@ function saveRecovery() {
 }
 
 function classifyDayType(steps, cardio, groups) {
+  if (profiles[currentUser]?.smartTargets) {
+    const score = activityScore(steps, cardio, groups).total;
+    return score >= 5.5 ? 'high_output' : score >= 1 ? 'standard' : 'rest';
+  }
   const text = (cardio || '').toLowerCase();
   const num  = parseFloat((text.match(/(\d+\.?\d*)/) || [])[1]) || 0;
   const isLongKm    = text.includes('km')  && num >= 8;
@@ -2600,6 +2646,7 @@ const GOAL_LABELS = { build_muscle: 'Build Muscle', lose_fat: 'Lose Fat', mainta
 
 function openSettings() {
   setGoalUI(profiles[currentUser]?.goal || null);
+  setSmartUI();
   document.getElementById('settings-modal').classList.add('open');
 }
 
@@ -2621,6 +2668,213 @@ async function saveGoal(goal) {
   profiles[currentUser] = profiles[currentUser] || {};
   profiles[currentUser].goal = goal;
   await db.collection('profiles').doc(currentUser).set({ goal }, { merge: true });
+  refreshSmart();
+}
+
+// ── Smart targets ──────────────────────────────
+// Activity load is a graded score, not a bucket: steps above a 6k baseline, size of the
+// weights session, and running/swim volume. 15k steps + weights outranks 10k steps alone.
+const SMART_PLAN = {
+  rest: { score: 0.5, label: 'Rest',     bump: -0.05 },
+  easy: { score: 3,   label: 'Easy',     bump: 0 },
+  hard: { score: 6,   label: 'Hard',     bump: 0.08 },
+  long: { score: 7,   label: 'Long run', bump: 0.10 },
+};
+const GOAL_OFFSET      = { lose_fat: -0.05, maintain: 0, build_muscle: 0.03, performance: 0.05 };
+const GOAL_WEIGHT_RATE = { lose_fat: -0.5, maintain: 0, build_muscle: 0.25, performance: 0 }; // kg per week
+let smartWindow = {}; // { uid: { date: dayDoc } }
+
+function shiftDateStr(str, n) {
+  const d = new Date(str + 'T12:00:00');
+  d.setDate(d.getDate() + n);
+  return localDateStr(d);
+}
+
+function activityScore(steps, cardio, groups) {
+  const parts = [];
+  const stepPts = Math.max(0, (steps || 0) - 6000) / 1000 * 0.5;
+  if (stepPts > 0) parts.push({ label: Number(steps).toLocaleString() + ' steps', pts: stepPts });
+  const rows = (groups || []).reduce((n, g) => n + (g.exercises || []).filter(e => e.exercise && e.exercise.trim()).length, 0);
+  if (rows) parts.push({ label: 'weights, ' + rows + ' exercises', pts: Math.min(1.5 + rows * 0.15, 3.5) });
+  String(cardio || '').toLowerCase().split(';').forEach(seg => {
+    const m = seg.match(/(\d+(?:\.\d+)?)\s*(km|m)\b/);
+    if (!m) return;
+    const km = m[2] === 'm' ? parseFloat(m[1]) / 1000 : parseFloat(m[1]);
+    if (/swim/.test(seg))                          parts.push({ label: Math.round(km * 1000) + ' m swim', pts: km });
+    else if (/run|tempo|treadmill|jog|interval/.test(seg)) parts.push({ label: km.toFixed(1) + (/tempo|interval/.test(seg) ? ' km tempo' : ' km run'), pts: km * (/tempo|interval/.test(seg) ? 0.5 : 0.35) });
+  });
+  const total = Math.round(parts.reduce((a, x) => a + x.pts, 0) * 10) / 10;
+  return { total, parts };
+}
+
+function loadLabel(score) {
+  return score < 1 ? 'Rest' : score < 3 ? 'Light' : score < 5 ? 'Moderate' : score < 7 ? 'Heavy' : 'Very heavy';
+}
+
+function kindFromScore(s) { return s < 1 ? 'rest' : s < 4 ? 'easy' : s < 6.5 ? 'hard' : 'long'; }
+
+function scoreOfDay(d) {
+  const a = (d && d.activity) || {};
+  return activityScore(a.steps, a.cardio, a.training || []).total;
+}
+
+async function loadSmartWindow(uid, date) {
+  const dates = [];
+  for (let i = 21; i >= -1; i--) dates.push(shiftDateStr(date, -i));
+  const snap = await db.collection('logs').doc(uid).collection('days')
+    .where(firebase.firestore.FieldPath.documentId(), 'in', dates).get();
+  const map = {};
+  snap.forEach(d => { map[d.id] = d.data(); });
+  smartWindow[uid] = map;
+}
+
+function weightTrend(w, date) {
+  const avg = (from, to) => {
+    const v = [];
+    for (let i = from; i <= to; i++) { const x = (w[shiftDateStr(date, -i)] || {}).weight; if (x) v.push(x); }
+    return v.length >= 3 ? v.reduce((a, b) => a + b, 0) / v.length : null;
+  };
+  const a = avg(0, 6), b = avg(7, 13);
+  return (a && b) ? Math.round((a - b) * 100) / 100 : null;
+}
+
+function plannedToday(w, date) {
+  const prev = w[shiftDateStr(date, -1)];
+  if (prev && SMART_PLAN[prev.nextDay]) return { kind: prev.nextDay, src: 'planned yesterday' };
+  const lw = w[shiftDateStr(date, -7)];
+  if (lw) return { kind: kindFromScore(scoreOfDay(lw)), src: 'same day last week' };
+  return null;
+}
+
+function nextKind(w, date) {
+  const next = w[shiftDateStr(date, 1)];
+  if (date < todayStr() && next) return { kind: kindFromScore(scoreOfDay(next)), src: 'actual', set: false };
+  const cur = w[date] || {};
+  if (SMART_PLAN[cur.nextDay]) return { kind: cur.nextDay, src: 'set', set: true };
+  const lw = w[shiftDateStr(date, -6)];
+  if (lw) return { kind: kindFromScore(scoreOfDay(lw)), src: 'same day last week', set: false };
+  return null;
+}
+
+function computeSmart(uid, date) {
+  const p = profiles[uid] || {};
+  const base = p.macroTargets || {};
+  const w = smartWindow[uid];
+  if (!p.smartTargets || !w || !base.carbs) return null;
+  const d = w[date] || {};
+  const act = d.activity || {};
+  const actual = activityScore(act.steps, act.cardio, act.training || []);
+  let score = actual.total, planNote = null;
+  if (date >= todayStr()) {
+    const plan = plannedToday(w, date);
+    if (plan && SMART_PLAN[plan.kind].score > actual.total) {
+      score = SMART_PLAN[plan.kind].score;
+      planNote = SMART_PLAN[plan.kind].label + ' day planned (' + plan.src + ')';
+    }
+  }
+  const reasons = [];
+  let factor = 1 + (score - 3) * 0.05;
+  const pct = (x) => (x > 0 ? '+' : '') + Math.round(x * 100) + '%';
+  reasons.push({ t: planNote || (actual.parts.length ? actual.parts.map(x => x.label).join(' + ') : 'No activity logged yet'),
+                 v: pct((score - 3) * 0.05), dir: score >= 3 ? 'up' : 'down' });
+  const go = GOAL_OFFSET[p.goal] || 0;
+  if (go) { factor += go; reasons.push({ t: 'Goal: ' + (GOAL_LABELS[p.goal] || ''), v: pct(go), dir: go > 0 ? 'up' : 'down' }); }
+  const nk = nextKind(w, date);
+  if (nk && SMART_PLAN[nk.kind].bump) {
+    factor += SMART_PLAN[nk.kind].bump;
+    reasons.push({ t: 'Tomorrow: ' + SMART_PLAN[nk.kind].label.toLowerCase() + (nk.set ? '' : ' (' + nk.src + ')'), v: pct(SMART_PLAN[nk.kind].bump), dir: SMART_PLAN[nk.kind].bump > 0 ? 'up' : 'down' });
+  }
+  const cur = Object.assign({}, d);
+  const wt = weightTrend(Object.assign({}, w, { [date]: cur }), date);
+  if (wt !== null) {
+    const delta = wt - (GOAL_WEIGHT_RATE[p.goal] || 0);
+    if (delta > 0.4)       { factor -= 0.07; reasons.push({ t: 'Weight ' + (wt > 0 ? '+' : '') + wt + ' kg/wk vs goal', v: '-7%', dir: 'down' }); }
+    else if (delta < -0.4) { factor += 0.07; reasons.push({ t: 'Weight ' + (wt > 0 ? '+' : '') + wt + ' kg/wk vs goal', v: '+7%', dir: 'up' }); }
+    else reasons.push({ t: 'Weight trend ' + (wt > 0 ? '+' : '') + wt + ' kg/wk, on track', v: '0%', dir: 'up' });
+  }
+  const rec = d.recovery || (w[shiftDateStr(date, -1)] || {}).recovery || {};
+  if (factor < 1 && ((rec.soreness || 0) >= 7 || (rec.sleep && rec.sleep < 6))) {
+    factor = 1; reasons.push({ t: 'Poor recovery, no cut below base', v: 'floor', dir: 'up' });
+  }
+  factor = Math.min(1.30, Math.max(0.70, factor));
+  const carbs = Math.round(base.carbs * factor / 5) * 5;
+  const protein = base.protein || 0, fat = base.fat || 0;
+  const baseKcal = p.calorieTarget || (protein * 4 + base.carbs * 4 + fat * 9);
+  const kcal = Math.round((baseKcal + (carbs - base.carbs) * 4) / 10) * 10;
+  return { score, level: loadLabel(score), carbs, protein, fat, kcal, reasons, nextKind: nk };
+}
+
+async function refreshSmart() {
+  const card = document.getElementById('smart-card');
+  const on = !!(profiles[currentUser] || {}).smartTargets;
+  document.querySelectorAll('.macro-field label').forEach(l => { if (/^(Target|Base)$/.test(l.textContent)) l.textContent = on ? 'Base' : 'Target'; });
+  const ctl = document.querySelector('.cal-target-row span');
+  if (ctl) ctl.textContent = on ? 'Base' : 'Target';
+  if (!on) { card.style.display = 'none'; window._smart = null; updateCalTotal(); return; }
+  try {
+    const uid = currentUser, date = currentDate;
+    await loadSmartWindow(uid, date);
+    if (uid !== currentUser || date !== currentDate) return;
+    // Use what's on screen for the day being viewed, so targets move as entries are made
+    const live = Object.assign({}, smartWindow[uid][date] || {});
+    live.activity = Object.assign({}, live.activity, {
+      steps: parseInt(document.getElementById('act-steps').value) || 0,
+      cardio: document.getElementById('act-cardio').value.trim(),
+      training: getWorkoutGroups(),
+    });
+    const wv = parseFloat(document.getElementById('w-input').value);
+    if (wv) live.weight = wv;
+    smartWindow[uid][date] = live;
+    const r = computeSmart(uid, date);
+    window._smart = r;
+    if (!r) { card.style.display = 'none'; updateCalTotal(); return; }
+    card.style.display = 'block';
+    document.getElementById('smart-load').textContent = r.level + ' load · ' + r.score;
+    document.getElementById('smart-chips').innerHTML = [
+      [r.kcal.toLocaleString(), 'kcal'], [r.protein + 'g', 'Protein'], [r.carbs + 'g', 'Carbs'], [r.fat + 'g', 'Fat'],
+    ].map(([v, k]) => '<div class="smart-chip"><div class="smart-chip-val">' + v + '</div><div class="smart-chip-key">' + k + '</div></div>').join('');
+    const ul = document.getElementById('smart-reasons');
+    ul.innerHTML = '';
+    r.reasons.forEach(x => {
+      const li = document.createElement('li');
+      const a = document.createElement('span'); a.textContent = x.t;
+      const b = document.createElement('span'); b.textContent = x.v; b.className = x.dir;
+      li.append(a, b); ul.appendChild(li);
+    });
+    document.querySelectorAll('#smart-tmr button').forEach(b => {
+      b.classList.remove('active', 'guess');
+      if (r.nextKind && b.dataset.k === r.nextKind.kind) b.classList.add(r.nextKind.set || r.nextKind.src === 'actual' ? 'active' : 'guess');
+    });
+    updateCalTotal();
+  } catch (e) { console.error('smart targets', e); }
+}
+
+async function setNextDay(kind) {
+  await patchDay({ nextDay: kind });
+  if (smartWindow[currentUser] && smartWindow[currentUser][currentDate]) smartWindow[currentUser][currentDate].nextDay = kind;
+  refreshSmart();
+}
+
+async function toggleSmart() {
+  const on = !(profiles[currentUser] || {}).smartTargets;
+  profiles[currentUser] = profiles[currentUser] || {};
+  profiles[currentUser].smartTargets = on;
+  await db.collection('profiles').doc(currentUser).set({ smartTargets: on }, { merge: true });
+  setSmartUI();
+  refreshSmart();
+}
+
+function setSmartUI() {
+  const on = !!(profiles[currentUser] || {}).smartTargets;
+  const b = document.getElementById('smart-toggle');
+  if (b) { b.textContent = on ? 'On' : 'Off'; b.classList.toggle('active', on); }
+}
+
+function effectiveTargets() {
+  const base = (profiles[currentUser] || {}).macroTargets || {};
+  const sm = window._smart;
+  if (sm && (profiles[currentUser] || {}).smartTargets) return { protein: sm.protein, carbs: sm.carbs, fat: sm.fat, kcal: sm.kcal };
+  return { protein: base.protein || 0, carbs: base.carbs || 0, fat: base.fat || 0, kcal: (profiles[currentUser] || {}).calorieTarget || 0 };
 }
 
 // ── AI Coach ───────────────────────────────────
@@ -2684,6 +2938,7 @@ async function generateWeeklyReview() {
     const weekData = days.map(d => ({
       date:      d.date,
       dayType:   d.dayType  || null,
+      load_score: d.activity ? activityScore(d.activity.steps, d.activity.cardio, d.activity.training || []).total : null,
       weight:    d.weight   || null,
       nutrition: d.nutrition ? { kcal: d.nutrition.kcal, protein: d.nutrition.protein, carbs: d.nutrition.carbs, fat: d.nutrition.fat } : null,
       training:  d.activity  ? {
@@ -2709,6 +2964,7 @@ Hard rules (never override):
 - Chunks with confidence "contested" must not override high-confidence evidence.
 - dayType values: "rest" = rest day, "standard" = normal training, "high_output" = heavy or long session. Use this to assess carbohydrate matching per kleiner_001. Flag clear mismatches (high_output day with critically low carbs; rest day with excess calories if a deficit is the goal).
 - User's current goal: ${goalLabel}. Tailor all recommendations to this goal. For Lose Fat: flag rest-day caloric surpluses and reward deficit consistency. For Build Muscle: flag chronic underfueling on training days (per kleiner_002, concurrent_005). For Performance: flag insufficient carbohydrate ahead of or following high-output sessions. For Maintain: flag large week-over-week intake swings. If goal is not set, give general coaching observations.
+- load_score is a graded activity score (about 0 = rest, 3 = moderate, 6+ = heavy; steps above 6k, weights and running all add to it). If smart_targets is true, macro_targets and calorie_target are BASE values for a moderate day (load about 3): the day's carb target moves roughly 5% per load point, plus a bump when tomorrow is a hard or long day. Judge carbs against load_score, not the flat number, and do not flag low carbs on rest or light days.
 - week_data covers the last 14 days, oldest first. Write the review about the most recent 7 days; use the earlier 7 only for trends (weight average change, intake consistency, lift loads).
 - For Lose Fat: if there is no evidence of a confirmed maintenance baseline (about 2 weeks of logged intake with a flat weight trend), say so and recommend confirming it before deepening any deficit (physique_001).
 - Never recommend reducing calories and adding cardio in the same week (physique_002).
@@ -2729,6 +2985,7 @@ Respond ONLY with valid JSON — no markdown fences, no prose outside the JSON:
       user: name,
       goal: profile.goal || null,
       macro_targets: targets,
+      smart_targets: !!profile.smartTargets,
       calorie_target: profile.calorieTarget || null,
       week_data: weekData,
       knowledge_chunks: KNOWLEDGE_BASE,
